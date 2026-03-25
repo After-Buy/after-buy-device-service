@@ -31,12 +31,12 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.16'
 	
-	// AWS 연동 라이브러리 버전 통합 관리 (BOM)
-	implementation platform('io.awspring.cloud:spring-cloud-aws-dependencies:3.1.1')
+	// AWS 연동 라이브러리 버전 통합 관리 (BOM) - AWS 접속 정보 미비로 인한 에러 방지를 위해 임시 주석 처리
+	// implementation platform('io.awspring.cloud:spring-cloud-aws-dependencies:3.1.1')
 	// 기기 이미지 및 영수증 업로드 전용 (S3)
-	implementation 'io.awspring.cloud:spring-cloud-aws-starter-s3'
+	// implementation 'io.awspring.cloud:spring-cloud-aws-starter-s3'
 	// Textract 비동기 OCR 처리 원격 호출 전용 (Lambda)
-	implementation 'software.amazon.awssdk:lambda'
+	// implementation 'software.amazon.awssdk:lambda'
 
 	// 프론트엔드 JWT 토큰 페이로드 자체 해석 및 위조 검증용 (JJWT)
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.5'
