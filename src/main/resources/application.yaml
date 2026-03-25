@@ -1,0 +1,38 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: DeviceService
+
+  # env 파일 내의 환경변수를 불러오는 설정
+  config:
+    import: optional:file:.env
+
+  # 데이터베이스(MySQL) 연결 설정 (device_db)
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}?useSSL=false&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  # JPA(Hibernate) 설정
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+
+  # AWS 연동 설정 (Spring Cloud AWS) - 임시 설정 파일
+  # cloud:
+  #   aws:
+  #     credentials:
+  #       access-key: ${AWS_ACCESS_KEY}
+  #       secret-key: ${AWS_SECRET_KEY}
+  #     region:
+  #       static: ${AWS_REGION}
+  #     s3:
+  #       bucket: ${AWS_S3_BUCKET}
