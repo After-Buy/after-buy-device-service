@@ -35,3 +35,7 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Custom Env - 환경변수 파일 깃 업로드 금지###
+.env
+.env.*
