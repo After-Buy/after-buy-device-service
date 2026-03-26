@@ -1,0 +1,132 @@
+name: Deploy Device Service
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/after-buy-device-service
+
+jobs:
+  build-and-push:
+    name: Build & Push to GHCR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set image tag by branch
+        id: set-tag
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "tag=latest" >> $GITHUB_OUTPUT
+          else
+            echo "tag=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & Push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:${{ steps.set-tag.outputs.tag }}
+
+  deploy-dev:
+    name: Deploy to Dev EC2
+    needs: build-and-push
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: SSH → Dev EC2 배포 (.env 생성 + 컨테이너 재시작)
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEV_EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.DEV_EC2_KEY }}
+          script: |
+            cat > ~/after-buy-infra/.env << 'ENVEOF'
+            GITHUB_ORG=after-buy
+            SPRING_PROFILES_ACTIVE=dev
+            DB_HOST=${{ secrets.DEV_DB_HOST }}
+            DB_USERNAME=${{ secrets.DEV_DB_USERNAME }}
+            DB_PASSWORD=${{ secrets.DEV_DB_PASSWORD }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            JWT_ACCESS_EXPIRATION=${{ secrets.JWT_ACCESS_EXPIRATION }}
+            JWT_REFRESH_EXPIRATION=${{ secrets.JWT_REFRESH_EXPIRATION }}
+            KAKAO_CLIENT_ID=${{ secrets.KAKAO_CLIENT_ID }}
+            KAKAO_CLIENT_SECRET=${{ secrets.KAKAO_CLIENT_SECRET }}
+            KAKAO_REDIRECT_URI=${{ secrets.DEV_KAKAO_REDIRECT_URI }}
+            INTERNAL_SECRET_KEY=${{ secrets.INTERNAL_SECRET_KEY }}
+            AWS_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY }}
+            AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }}
+            AWS_REGION=${{ secrets.AWS_REGION }}
+            AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET }}
+            NAVER_CLIENT_ID=${{ secrets.NAVER_CLIENT_ID }}
+            NAVER_CLIENT_SECRET=${{ secrets.NAVER_CLIENT_SECRET }}
+            FIREBASE_CONFIG_PATH=classpath:firebase-service-account.json
+            ADMIN_FRONTEND_URL=${{ secrets.DEV_ADMIN_FRONTEND_URL }}
+            ENVEOF
+
+            cd ~/after-buy-infra
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker-compose -f docker-compose.yml -f docker-compose.dev.yml pull device-service
+            docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d device-service
+            docker image prune -f
+
+  deploy-prod:
+    name: Deploy to Prod EC2
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: SSH → Prod EC2 배포 (.env 생성 + 컨테이너 재시작)
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.PROD_EC2_KEY }}
+          script: |
+            cat > ~/after-buy-infra/.env << 'ENVEOF'
+            GITHUB_ORG=after-buy
+            SPRING_PROFILES_ACTIVE=prod
+            DB_HOST=${{ secrets.PROD_DB_HOST }}
+            DB_USERNAME=${{ secrets.PROD_DB_USERNAME }}
+            DB_PASSWORD=${{ secrets.PROD_DB_PASSWORD }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            JWT_ACCESS_EXPIRATION=${{ secrets.JWT_ACCESS_EXPIRATION }}
+            JWT_REFRESH_EXPIRATION=${{ secrets.JWT_REFRESH_EXPIRATION }}
+            KAKAO_CLIENT_ID=${{ secrets.KAKAO_CLIENT_ID }}
+            KAKAO_CLIENT_SECRET=${{ secrets.KAKAO_CLIENT_SECRET }}
+            KAKAO_REDIRECT_URI=${{ secrets.PROD_KAKAO_REDIRECT_URI }}
+            INTERNAL_SECRET_KEY=${{ secrets.INTERNAL_SECRET_KEY }}
+            AWS_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY }}
+            AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }}
+            AWS_REGION=${{ secrets.AWS_REGION }}
+            AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET }}
+            NAVER_CLIENT_ID=${{ secrets.NAVER_CLIENT_ID }}
+            NAVER_CLIENT_SECRET=${{ secrets.NAVER_CLIENT_SECRET }}
+            FIREBASE_CONFIG_PATH=classpath:firebase-service-account.json
+            ADMIN_FRONTEND_URL=${{ secrets.PROD_ADMIN_FRONTEND_URL }}
+            ENVEOF
+
+            cd ~/after-buy-infra
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker-compose -f docker-compose.yml -f docker-compose.prod.yml pull device-service
+            docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d device-service
+            docker image prune -f

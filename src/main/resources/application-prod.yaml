@@ -1,0 +1,14 @@
+# Prod 환경 전용 설정
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+logging:
+  level:
+    root: WARN
+    com.After_Buy: INFO
