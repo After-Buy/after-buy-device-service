@@ -25,6 +25,41 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      # 빌드 직전, 테스트 통과를 위한 통합 깡통(가짜) 환경변수 생성!
+      - name: Create Mock .env for Testing
+        run: |
+          # 1. 공통 DB 설정
+          echo "DB_HOST=localhost" >> .env
+          echo "DB_PORT=3306" >> .env
+          echo "DB_NAME=test_db" >> .env
+          echo "DB_USERNAME=root" >> .env
+          echo "DB_PASSWORD=root" >> .env
+          
+          # 2. MSA 통신 및 JWT / 인증
+          echo "INTERNAL_SECRET_KEY=dummy_internal_key_for_testing" >> .env
+          echo "JWT_SECRET=super_secret_dummy_jwt_key_for_testing_12345678" >> .env
+          echo "JWT_ACCESS_EXPIRATION=3600000" >> .env
+          echo "JWT_REFRESH_EXPIRATION=1209600000" >> .env
+          
+          # 3. AWS S3 관련
+          echo "AWS_ACCESS_KEY=dummy_access_key" >> .env
+          echo "AWS_SECRET_KEY=dummy_secret_key" >> .env
+          echo "AWS_REGION=ap-northeast-2" >> .env
+          echo "AWS_S3_BUCKET=dummy_bucket" >> .env
+          
+          # 4. Auth 서비스 전용 (카카오)
+          echo "KAKAO_CLIENT_ID=dummy_kakao_id" >> .env
+          echo "KAKAO_CLIENT_SECRET=dummy_kakao_secret" >> .env
+          echo "KAKAO_REDIRECT_URI=http://localhost/login/oauth2/code/kakao" >> .env
+          
+          # 5. Device 서비스 전용 (네이버 API)
+          echo "NAVER_CLIENT_ID=dummy_naver_id" >> .env
+          echo "NAVER_CLIENT_SECRET=dummy_naver_secret" >> .env
+          
+          # 6. Admin & Notification 전용
+          echo "ADMIN_FRONTEND_URL=http://localhost:3000" >> .env
+          echo "FIREBASE_CONFIG_PATH=classpath:firebase-service-account.json" >> .env
+
       - name: Build and Test with Gradle
         # tests and verifies building a runnable jar without creating docker image
         run: ./gradlew build --no-daemon
