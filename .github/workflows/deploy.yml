@@ -8,7 +8,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/after-buy-device-service
+  IMAGE_NAME: ghcr.io/after-buy/after-buy-device-service
 
 jobs:
   build-and-push:
