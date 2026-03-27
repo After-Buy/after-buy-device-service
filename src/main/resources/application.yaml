@@ -6,9 +6,9 @@ spring:
   application:
     name: DeviceService
 
-  # env 파일 내의 환경변수를 불러오는 설정
+  # env 파일 내의 환경변수를 불러오는 설정 (확장자가 없으므로 properties 형식으로 강제 파싱)
   config:
-    import: optional:file:.env
+    import: optional:file:.env[.properties]
 
   # 데이터베이스(MySQL) 연결 설정 (device_db)
   datasource:
