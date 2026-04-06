@@ -32,6 +32,8 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	// 기기 및 영수증 REST API 엔드포인트 구축을 위한 필수 웹 프레임워크
 	implementation 'org.springframework.boot:spring-boot-starter-web'
+	// JWT Bearer 토큰 검증 필터 및 SecurityFilterChain 구성을 위한 Spring Security
+	implementation 'org.springframework.boot:spring-boot-starter-security'
 	// 외부 API(네이버 쇼핑 등) 및 타 마이크로서비스 비동기 호출 클라이언트 (WebClient)
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
 	// API 명세서 포맷 자동 생성 및 Swagger UI 제공
@@ -58,6 +60,8 @@ dependencies {
 
 	// 스프링 기본 통합 테스트 모듈 세트
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	// H2 인메모리 데이터베이스 (테스트 용도)
+	testImplementation 'com.h2database:h2'
 	// WebFlux(WebClient) 외부 API 호출 연관 비동기 통신 로직 테스트용
 	testImplementation 'io.projectreactor:reactor-test'
 	// JUnit5(Jupiter) 플랫폼 테스트 구동 엔진
