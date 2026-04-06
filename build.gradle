@@ -60,6 +60,8 @@ dependencies {
 
 	// 스프링 기본 통합 테스트 모듈 세트
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	// H2 인메모리 데이터베이스 (테스트 용도)
+	testImplementation 'com.h2database:h2'
 	// WebFlux(WebClient) 외부 API 호출 연관 비동기 통신 로직 테스트용
 	testImplementation 'io.projectreactor:reactor-test'
 	// JUnit5(Jupiter) 플랫폼 테스트 구동 엔진
