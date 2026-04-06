@@ -32,6 +32,8 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	// 기기 및 영수증 REST API 엔드포인트 구축을 위한 필수 웹 프레임워크
 	implementation 'org.springframework.boot:spring-boot-starter-web'
+	// JWT Bearer 토큰 검증 필터 및 SecurityFilterChain 구성을 위한 Spring Security
+	implementation 'org.springframework.boot:spring-boot-starter-security'
 	// 외부 API(네이버 쇼핑 등) 및 타 마이크로서비스 비동기 호출 클라이언트 (WebClient)
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
 	// API 명세서 포맷 자동 생성 및 Swagger UI 제공

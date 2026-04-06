@@ -37,3 +37,18 @@ spring:
   #       static: ${AWS_REGION}
   #     s3:
   #       bucket: ${AWS_S3_BUCKET}
+
+# 내부 서비스 통신용 시크릿 키 (MSA 내부 API 접근 보안)
+internal:
+  secret-key: ${INTERNAL_SECRET_KEY}
+
+# JWT 설정 (Auth Service와 동일한 비밀키 공유 — 토큰 검증 전용)
+jwt:
+  secret: ${JWT_SECRET}
+  access-expiration: ${JWT_ACCESS_EXPIRATION:3600000}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:1209600000}
+
+# 네이버 쇼핑 외부 API 연동 정보 (.env 매핑)
+naver:
+  client-id: ${NAVER_CLIENT_ID}
+  client-secret: ${NAVER_CLIENT_SECRET}
