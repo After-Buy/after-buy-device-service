@@ -8,6 +8,13 @@ spring:
       hibernate:
         format_sql: false
 
+
+springdoc:
+  swagger-ui:
+    path: /api/devices/swagger-ui.html
+  api-docs:
+    path: /api/devices/v3/api-docs
+
 logging:
   level:
     root: WARN
