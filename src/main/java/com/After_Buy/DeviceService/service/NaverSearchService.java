@@ -11,6 +11,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.HtmlUtils;
 
+/**
+ * 네이버 쇼핑 검색 서비스
+ * 제품의 모델명을 통해 네이버 쇼핑 API와 통신하여 정보를 추출하고 정제하는 서비스 클래스
+ *
+ * @since : 2026.04.07
+ * @version : 1.0.0
+ * @author : 최준혁
+ */
 @Slf4j
 @Service
 public class NaverSearchService {
@@ -29,12 +37,16 @@ public class NaverSearchService {
     }
 
     /**
+     * 제품 모델명 검색 메소드
      * 모델명을 기반으로 네이버 쇼핑 API를 호출하여 가장 정확도(sim)가 높은 첫 번째 제품 데이터를 반환합니다.
      * OCR에서 추출된 고유 모델명이 입력되는 것을 상정합니다.
      *
-     * @param modelName 기기가 식별되는 고유 모델명
-     * @return NaverProductDto 변환된 검색 결과
-     * @throws CustomException 검색 결과가 없을 경우 에러 발생
+     * @param modelName : 기기가 식별되는 고유 모델명
+     * @return : NaverProductDto (변환 및 정제된 검색 결과)
+     * @since : 2026.04.07
+     * @version : 1.0.0
+     * @throws : CustomException (검색 결과가 없거나 모델명이 일치하지 않을 경우 SEARCH_NO_RESULT 에러 발생)
+     * @author : 최준혁
      */
     public NaverProductDto searchProduct(String modelName) {
         log.info("[NaverSearchService] Searching for model: {}", modelName);
@@ -78,7 +90,14 @@ public class NaverSearchService {
     }
 
     /**
+     * 모델명 데이터 정규화 처리 메소드
      * 공백, 하이픈, 언더바 등을 제거하고 모두 대문자로 변환하여 엄격한 문자열 비교를 위한 정규화를 수행합니다.
+     *
+     * @param input : 정규화할 원본 문자열
+     * @return : 공백과 특수기호가 제거된 대문자 문자열
+     * @since : 2026.04.07
+     * @version : 1.0.0
+     * @author : 최준혁
      */
     private String normalizeString(String input) {
         if (input == null) return "";
@@ -86,7 +105,14 @@ public class NaverSearchService {
     }
 
     /**
-     * HTML 태그(<b> 등)를 제거하고 이스케이프된 문자를 복원합니다.
+     * HTML 태그 제거 및 이스케이프 복원 메소드
+     * HTML <b> 등의 태그를 제거하고 이스케이프된 문자를 일반 문자열로 복원합니다.
+     *
+     * @param input : HTML 태그가 포함된 원본 문자열
+     * @return : HTML 태그가 제거된 순수 문자열
+     * @since : 2026.04.07
+     * @version : 1.0.0
+     * @author : 최준혁
      */
     private String cleanHtmlTags(String input) {
         if (input == null) return null;
