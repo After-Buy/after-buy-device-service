@@ -2,6 +2,13 @@ package com.After_Buy.DeviceService.repository;
 
 import com.After_Buy.DeviceService.entity.Device;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
 
 /**
  * 기기 레포지토리
@@ -13,4 +20,22 @@ import org.springframework.data.jpa.repository.JpaRepository;
  * @author : 최준혁
  */
 public interface DeviceRepository extends JpaRepository<Device, Long> {
+
+    // 사용자의 전체 기기 개수 조회
+    Long countByUserId(Long userId);
+
+    // 사용자의 등록 기기 가격들(가치)의 총합 조회
+    @Query("SELECT COALESCE(SUM(d.purchasePrice), 0) FROM Device d WHERE d.userId = :userId")
+    BigDecimal sumPurchasePriceByUserId(@Param("userId") Long userId);
+
+    // 보증 만료 기간이 다가오는(오늘부터 end_date 사이) 기기 개수 조회
+    @Query("SELECT COUNT(d) FROM Device d WHERE d.userId = :userId AND d.warrantyExpiryDate BETWEEN CURRENT_DATE AND :endDate")
+    Long countExpiringSoonByUserId(@Param("userId") Long userId, @Param("endDate") LocalDate endDate);
+
+    // 사용자의 가장 최근에 등록된 기기 최대 3대 조회
+    List<Device> findTop3ByUserIdOrderByCreatedAtDesc(Long userId);
+
+    // 현재 기점 가장 만료일이 근접한 1개의 기기 조회 (Native Query 이용)
+    @Query(value = "SELECT * FROM devices WHERE user_id = :userId ORDER BY ABS(DATEDIFF(warranty_expiry_date, CURRENT_DATE)) ASC LIMIT 1", nativeQuery = true)
+    Optional<Device> findTopByUserIdOrderByWarrantyExpiryDateClosest(@Param("userId") Long userId);
 }

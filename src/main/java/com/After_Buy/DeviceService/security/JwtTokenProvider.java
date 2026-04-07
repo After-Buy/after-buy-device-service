@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.util.Date;
 
 /**
  * JWT 토큰 검증 전용 프로바이더
@@ -73,11 +74,11 @@ public class JwtTokenProvider {
 		return Jwts.parser().verifyWith(this.secretKey).build().parseSignedClaims(token).getPayload();
 	}
 
-	public java.util.Date getRefreshTokenExpiry() {
-		return new java.util.Date(System.currentTimeMillis() + this.refreshExpiration);
+	public Date getRefreshTokenExpiry() {
+		return new Date(System.currentTimeMillis() + this.refreshExpiration);
 	}
 
-	public java.util.Date getExpirationFromToken(String token) {
+	public Date getExpirationFromToken(String token) {
 		return parseClaims(token).getExpiration();
 	}
 }
