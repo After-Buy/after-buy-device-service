@@ -51,7 +51,7 @@ public class SecurityConfig {
 			.authorizeHttpRequests(auth -> auth
 				// 헬스 체크 및 Swagger UI 공개
 				.requestMatchers("/actuator/health").permitAll()
-				.requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
+				.requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/api/devices/swagger-ui/**", "/api/devices/swagger-ui.html", "/api/devices/v3/api-docs/**").permitAll()
 				// MSA 내부 서비스 간 통신 경로 공개 (별도 InternalSecretFilter로 보호)
 				.requestMatchers("/internal/**").permitAll()
 				// 나머지 모든 Device API는 JWT 인증 필수
