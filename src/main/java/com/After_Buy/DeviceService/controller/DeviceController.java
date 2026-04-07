@@ -3,8 +3,10 @@ package com.After_Buy.DeviceService.controller;
 import com.After_Buy.DeviceService.dto.request.DeviceRegisterRequest;
 import com.After_Buy.DeviceService.dto.response.ApiResponse;
 import com.After_Buy.DeviceService.dto.response.DeviceResponse;
+import com.After_Buy.DeviceService.dto.response.NaverProductDto;
 import com.After_Buy.DeviceService.security.UserPrincipal;
 import com.After_Buy.DeviceService.service.DeviceService;
+import com.After_Buy.DeviceService.service.NaverSearchService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -34,6 +36,7 @@ import org.springframework.web.bind.annotation.*;
 public class DeviceController {
 
 	private final DeviceService deviceService;
+	private final NaverSearchService naverSearchService;
 
 	/**
 	 * 기기 등록 API
@@ -53,5 +56,24 @@ public class DeviceController {
 		log.info("기기 등록 요청: userId={}", userPrincipal.getUserId());
 		DeviceResponse response = deviceService.registerDevice(userPrincipal.getUserId(), request);
 		return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
+	}
+
+	/**
+	 * 모델명 기반 제품 검색 메소드
+	 * OCR 등으로 추출된 제품의 고유 모델명을 기반으로 네이버 쇼핑 API 검색을 수행하여, 가장 연관성이 높은 최상단의 제품 데이터를 가져옵니다.
+	 *
+	 * @param modelName : 검색할 고유 모델명 (예: SM-G991N)
+	 * @return : 200 OK + NaverProductDto (클라이언트에 반영될 정제된 제품 메타 정보)
+	 * @since : 2026.04.07
+	 * @version : 1.0.0
+	 * @throws : Exception
+	 * @author : 최준혁
+	 */
+	@Operation(summary = "제조사 및 제품 정보 자동 매핑", description = "제품의 고유 모델명을 입력하면 네이버 쇼핑 엔진의 정확도 순(유사도) 매치 결과를 통해 브랜드명, 제품 이미지 URL, 구매처 링크 등을 매핑해옵니다.")
+	@GetMapping("/naver-search")
+	public ResponseEntity<ApiResponse<NaverProductDto>> getProductFromNaver(@RequestParam("modelName") String modelName) {
+		log.info("네이버 쇼핑 API 모델명 검색 요청: modelName={}", modelName);
+		NaverProductDto response = naverSearchService.searchProduct(modelName);
+		return ResponseEntity.ok(ApiResponse.success(response));
 	}
 }
