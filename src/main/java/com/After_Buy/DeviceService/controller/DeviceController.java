@@ -3,6 +3,7 @@ package com.After_Buy.DeviceService.controller;
 import com.After_Buy.DeviceService.dto.request.DeviceRegisterRequest;
 import com.After_Buy.DeviceService.dto.response.ApiResponse;
 import com.After_Buy.DeviceService.dto.response.DeviceResponse;
+import com.After_Buy.DeviceService.dto.response.HomeSummaryResponse;
 import com.After_Buy.DeviceService.security.UserPrincipal;
 import com.After_Buy.DeviceService.service.DeviceService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -46,10 +47,10 @@ public class DeviceController {
 	 */
 	@Operation(summary = "홈 화면 요약 데이터 조회", description = "보유 자산 통계, 최근 등록 3개, 보증 시간 가장 임박 1개 기기를 반환합니다.")
 	@GetMapping("/home-summary")
-	public ResponseEntity<ApiResponse<com.After_Buy.DeviceService.dto.response.HomeSummaryResponse>> getHomeSummary(
+	public ResponseEntity<ApiResponse<HomeSummaryResponse>> getHomeSummary(
 			@AuthenticationPrincipal UserPrincipal userPrincipal) {
 		log.info("홈 화면 요약 조회 요청: userId={}", userPrincipal.getUserId());
-		com.After_Buy.DeviceService.dto.response.HomeSummaryResponse response = deviceService.getHomeSummary(userPrincipal.getUserId());
+		HomeSummaryResponse response = deviceService.getHomeSummary(userPrincipal.getUserId());
 		return ResponseEntity.ok(ApiResponse.success(response));
 	}
 

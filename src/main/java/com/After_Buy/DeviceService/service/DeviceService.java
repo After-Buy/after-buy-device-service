@@ -2,6 +2,9 @@ package com.After_Buy.DeviceService.service;
 
 import com.After_Buy.DeviceService.dto.request.DeviceRegisterRequest;
 import com.After_Buy.DeviceService.dto.response.DeviceResponse;
+import com.After_Buy.DeviceService.dto.response.HomeDeviceDto;
+import com.After_Buy.DeviceService.dto.response.HomeSummaryResponse;
+import com.After_Buy.DeviceService.dto.response.SummaryDto;
 import com.After_Buy.DeviceService.entity.Device;
 import com.After_Buy.DeviceService.exception.CustomException;
 import com.After_Buy.DeviceService.exception.ErrorCode;
@@ -12,7 +15,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * 기기 비즈니스 로직 서비스
@@ -95,30 +103,32 @@ public class DeviceService {
 	 * @return : 홈 화면 요약 응답 객체
 	 */
 	@Transactional(readOnly = true)
-	public com.After_Buy.DeviceService.dto.response.HomeSummaryResponse getHomeSummary(Long userId) {
-		// 1. 자산 통계 조회
+	public HomeSummaryResponse getHomeSummary(Long userId) {
+		/* 1. 자산 통계 조회 */
 		Long totalDevices = deviceRepository.countByUserId(userId);
-		java.math.BigDecimal totalValue = deviceRepository.sumPurchasePriceByUserId(userId);
+		BigDecimal totalValue = deviceRepository.sumPurchasePriceByUserId(userId);
 		LocalDate endDate = LocalDate.now().plusDays(30);
 		Long expiringSoonCount = deviceRepository.countExpiringSoonByUserId(userId, endDate);
 
-		com.After_Buy.DeviceService.dto.response.SummaryDto summary = com.After_Buy.DeviceService.dto.response.SummaryDto.builder()
+		SummaryDto summary = SummaryDto.builder()
 				.total_devices(totalDevices.intValue())
 				.total_value(totalValue)
 				.expiring_soon_count(expiringSoonCount.intValue())
 				.build();
 
-		// 2. 최근 등록된 기기 조회 (최대 3개)
-		java.util.List<Device> recents = deviceRepository.findTop3ByUserIdOrderByCreatedAtDesc(userId);
-		java.util.List<com.After_Buy.DeviceService.dto.response.HomeDeviceDto> recentDevices = recents.stream()
+		/* 2. 최근 등록된 기기 조회 (최대 3개) */
+		List<Device> recents = deviceRepository.findTop3ByUserIdOrderByCreatedAtDesc(userId);
+		List<HomeDeviceDto> recentDevices = recents.stream()
 				.map(device -> mapToHomeDeviceDto(device, true))
-				.collect(java.util.stream.Collectors.toList());
+				.collect(Collectors.toList());
 
-		// 3. 가장 보증 만료가 임박한 기기 조회 (Native Query 이용)
-		java.util.Optional<Device> urgentDeviceOpt = deviceRepository.findTopByUserIdOrderByWarrantyExpiryDateClosest(userId);
-		com.After_Buy.DeviceService.dto.response.HomeDeviceDto urgentDevice = urgentDeviceOpt.map(device -> mapToHomeDeviceDto(device, false)).orElse(null);
+		/* 3. 가장 보증 만료가 임박한 기기 조회 (Native Query 이용) */
+		Optional<Device> urgentDeviceOpt = deviceRepository.findTopByUserIdOrderByWarrantyExpiryDateClosest(userId);
+		HomeDeviceDto urgentDevice = urgentDeviceOpt
+				.map(device -> mapToHomeDeviceDto(device, false))
+				.orElse(null);
 
-		return com.After_Buy.DeviceService.dto.response.HomeSummaryResponse.builder()
+		return HomeSummaryResponse.builder()
 				.summary(summary)
 				.recent_devices(recentDevices)
 				.urgent_device(urgentDevice)
@@ -132,10 +142,10 @@ public class DeviceService {
 	 * @param isRecent 최근 기기 리스트인지 여부 (true: modelName, createdAt 포함 / false: productLinkUrl 포함)
 	 * @return HomeDeviceDto 객체
 	 */
-	private com.After_Buy.DeviceService.dto.response.HomeDeviceDto mapToHomeDeviceDto(Device device, boolean isRecent) {
-		long remainingDays = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), device.getWarrantyExpiryDate());
+	private HomeDeviceDto mapToHomeDeviceDto(Device device, boolean isRecent) {
+		long remainingDays = ChronoUnit.DAYS.between(LocalDate.now(), device.getWarrantyExpiryDate());
 
-		com.After_Buy.DeviceService.dto.response.HomeDeviceDto.HomeDeviceDtoBuilder builder = com.After_Buy.DeviceService.dto.response.HomeDeviceDto.builder()
+		HomeDeviceDto.HomeDeviceDtoBuilder builder = HomeDeviceDto.builder()
 				.device_id(device.getDeviceId())
 				.product_name(device.getProductName())
 				.brand(device.getBrand())
