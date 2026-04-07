@@ -25,6 +25,11 @@ public enum ErrorCode {
 	/** 기기가 존재하지 않거나 본인 소유가 아닌 경우 */
 	DEVICE_NOT_FOUND(HttpStatus.NOT_FOUND, "DEVICE-002", "존재하지 않거나 접근 권한이 없는 기기입니다."),
 
+	/* ===== 검색 대행 관련 (SEARCH-0XX) ===== */
+
+	/** 네이버 쇼핑 API 검색 결과 없음 */
+	SEARCH_NO_RESULT(HttpStatus.NOT_FOUND, "SEARCH-001", "검색 결과가 없습니다. 직접 입력해주세요."),
+
 	/* ===== OCR 관련 (OCR-0XX) ===== */
 
 	/** OCR 텍스트 인식 실패 */
