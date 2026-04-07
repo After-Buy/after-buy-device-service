@@ -86,4 +86,70 @@ public class DeviceService {
 
 		return DeviceResponse.from(savedDevice);
 	}
+
+	/**
+	 * 홈 화면 데이터 요약 조회
+	 * 사용자의 기기 통계(총 기기 수, 총 가치, 30일 내 만료), 기기 리스트(최근 3대), 보증 임박 기기(1대)를 반환합니다.
+	 *
+	 * @param userId : 조회할 사용자 ID
+	 * @return : 홈 화면 요약 응답 객체
+	 */
+	@Transactional(readOnly = true)
+	public com.After_Buy.DeviceService.dto.response.HomeSummaryResponse getHomeSummary(Long userId) {
+		// 1. 자산 통계 조회
+		Long totalDevices = deviceRepository.countByUserId(userId);
+		java.math.BigDecimal totalValue = deviceRepository.sumPurchasePriceByUserId(userId);
+		LocalDate endDate = LocalDate.now().plusDays(30);
+		Long expiringSoonCount = deviceRepository.countExpiringSoonByUserId(userId, endDate);
+
+		com.After_Buy.DeviceService.dto.response.SummaryDto summary = com.After_Buy.DeviceService.dto.response.SummaryDto.builder()
+				.total_devices(totalDevices.intValue())
+				.total_value(totalValue)
+				.expiring_soon_count(expiringSoonCount.intValue())
+				.build();
+
+		// 2. 최근 등록된 기기 조회 (최대 3개)
+		java.util.List<Device> recents = deviceRepository.findTop3ByUserIdOrderByCreatedAtDesc(userId);
+		java.util.List<com.After_Buy.DeviceService.dto.response.HomeDeviceDto> recentDevices = recents.stream()
+				.map(device -> mapToHomeDeviceDto(device, true))
+				.collect(java.util.stream.Collectors.toList());
+
+		// 3. 가장 보증 만료가 임박한 기기 조회 (Native Query 이용)
+		java.util.Optional<Device> urgentDeviceOpt = deviceRepository.findTopByUserIdOrderByWarrantyExpiryDateClosest(userId);
+		com.After_Buy.DeviceService.dto.response.HomeDeviceDto urgentDevice = urgentDeviceOpt.map(device -> mapToHomeDeviceDto(device, false)).orElse(null);
+
+		return com.After_Buy.DeviceService.dto.response.HomeSummaryResponse.builder()
+				.summary(summary)
+				.recent_devices(recentDevices)
+				.urgent_device(urgentDevice)
+				.build();
+	}
+
+	/**
+	 * Device Entity -> HomeDeviceDto 매핑 유틸 메서드
+	 *
+	 * @param device   변환할 기기 엔티티
+	 * @param isRecent 최근 기기 리스트인지 여부 (true: modelName, createdAt 포함 / false: productLinkUrl 포함)
+	 * @return HomeDeviceDto 객체
+	 */
+	private com.After_Buy.DeviceService.dto.response.HomeDeviceDto mapToHomeDeviceDto(Device device, boolean isRecent) {
+		long remainingDays = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), device.getWarrantyExpiryDate());
+
+		com.After_Buy.DeviceService.dto.response.HomeDeviceDto.HomeDeviceDtoBuilder builder = com.After_Buy.DeviceService.dto.response.HomeDeviceDto.builder()
+				.device_id(device.getDeviceId())
+				.product_name(device.getProductName())
+				.brand(device.getBrand())
+				.image_url(device.getImageUrl())
+				.warranty_expiry_date(device.getWarrantyExpiryDate())
+				.days_remaining(remainingDays);
+
+		if (isRecent) {
+			builder.model_name(device.getModelName());
+			builder.created_at(device.getCreatedAt());
+		} else {
+			builder.product_link_url(device.getProductLinkUrl());
+		}
+
+		return builder.build();
+	}
 }

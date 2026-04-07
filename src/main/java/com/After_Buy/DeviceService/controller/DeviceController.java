@@ -36,6 +36,24 @@ public class DeviceController {
 	private final DeviceService deviceService;
 
 	/**
+	 * 홈 화면 요약 데이터 조회 API
+	 * 사용자의 기기 통계(총 기기 수, 총 가치, 30일 내 만료), 기기 리스트(최근 3대), 보증 임박 기기(1대)를 반환합니다.
+	 *
+	 * @param userPrincipal : JWT 토큰에서 추출된 인증 사용자 정보
+	 * @return : 200 OK + 홈 화면 요약 응답 데이터
+	 * @since : 2026.04.08
+	 * @author : 최준혁
+	 */
+	@Operation(summary = "홈 화면 요약 데이터 조회", description = "보유 자산 통계, 최근 등록 3개, 보증 시간 가장 임박 1개 기기를 반환합니다.")
+	@GetMapping("/home-summary")
+	public ResponseEntity<ApiResponse<com.After_Buy.DeviceService.dto.response.HomeSummaryResponse>> getHomeSummary(
+			@AuthenticationPrincipal UserPrincipal userPrincipal) {
+		log.info("홈 화면 요약 조회 요청: userId={}", userPrincipal.getUserId());
+		com.After_Buy.DeviceService.dto.response.HomeSummaryResponse response = deviceService.getHomeSummary(userPrincipal.getUserId());
+		return ResponseEntity.ok(ApiResponse.success(response));
+	}
+
+	/**
 	 * 기기 등록 API
 	 * 새 기기를 등록합니다. warranty_expiry_date는 서버에서 purchase_date + warranty_months로 자동 계산 후 저장합니다.
 	 * image_url이 없을 경우 placeholder 이미지가 자동으로 삽입됩니다.
