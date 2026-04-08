@@ -285,6 +285,9 @@ public class DeviceService {
 
 		device.updateName(request.getProductName());
 
-		return DeviceNameUpdateResponse.from(device);
+		/* @UpdateTimestamp는 flush 전까지 갱신되지 않으므로 saveAndFlush로 즉시 반영 */
+		Device savedDevice = deviceRepository.saveAndFlush(device);
+
+		return DeviceNameUpdateResponse.from(savedDevice);
 	}
 }
