@@ -192,4 +192,24 @@ public class DeviceController {
 		DeviceNameUpdateResponse response = deviceService.updateDeviceName(userPrincipal.getUserId(), deviceId, request);
 		return ResponseEntity.ok(ApiResponse.success(response));
 	}
+
+	/**
+	 * 기기 삭제 API
+	 * 기기를 영구 삭제합니다.
+	 *
+	 * @param userPrincipal : JWT 토큰에서 추출된 인증 사용자 정보
+	 * @param deviceId : 삭제할 기기의 고유 ID
+	 * @return : 200 OK + 성공 메시지
+	 * @since : 2026.04.09
+	 * @author : 최준혁
+	 */
+	@Operation(summary = "기기 삭제", description = "기기를 영구 삭제합니다.")
+	@DeleteMapping("/{device_id}")
+	public ResponseEntity<ApiResponse<Void>> deleteDevice(
+			@AuthenticationPrincipal UserPrincipal userPrincipal,
+			@PathVariable("device_id") Long deviceId) {
+		log.info("기기 삭제 요청: userId={}, deviceId={}", userPrincipal.getUserId(), deviceId);
+		deviceService.deleteDevice(userPrincipal.getUserId(), deviceId);
+		return ResponseEntity.ok(ApiResponse.successMessage("기기가 삭제되었습니다."));
+	}
 }
