@@ -1,12 +1,15 @@
 package com.After_Buy.DeviceService.service;
 
 import com.After_Buy.DeviceService.dto.request.DeviceRegisterRequest;
+import com.After_Buy.DeviceService.dto.request.DeviceUpdateRequest;
+import com.After_Buy.DeviceService.dto.request.DeviceNameUpdateRequest;
 import com.After_Buy.DeviceService.dto.response.DeviceResponse;
 import com.After_Buy.DeviceService.dto.response.HomeDeviceDto;
 import com.After_Buy.DeviceService.dto.response.HomeSummaryResponse;
 import com.After_Buy.DeviceService.dto.response.DeviceListResponse;
 import com.After_Buy.DeviceService.dto.response.DeviceListItemDto;
 import com.After_Buy.DeviceService.dto.response.DeviceDetailResponse;
+import com.After_Buy.DeviceService.dto.response.DeviceNameUpdateResponse;
 import com.After_Buy.DeviceService.dto.response.SummaryDto;
 import com.After_Buy.DeviceService.entity.Device;
 import com.After_Buy.DeviceService.exception.CustomException;
@@ -212,5 +215,79 @@ public class DeviceService {
 		}
 
 		return DeviceDetailResponse.from(device);
+	}
+
+	/**
+	 * 기기 정보 전체 수정 (model_name 제외)
+	 * API: PUT /api/devices/{device_id}
+	 * 
+	 * @param userId   : JWT에서 추출한 사용자 ID
+	 * @param deviceId : 수정대상 기기 ID
+	 * @param request  : 수정 데이터
+	 * @return DeviceDetailResponse : 수정된 내용이 반영된 상세 정보
+	 */
+	@Transactional
+	public DeviceDetailResponse updateDevice(Long userId, Long deviceId, DeviceUpdateRequest request) {
+		Device device = deviceRepository.findById(deviceId)
+				.orElseThrow(() -> new CustomException(ErrorCode.DEVICE_NOT_FOUND));
+
+		if (!device.getUserId().equals(userId)) {
+			log.warn("기기 수정 권한 없음: 요청 userId={}, device 소유 userId={}", userId, device.getUserId());
+			throw new CustomException(ErrorCode.DEVICE_ACCESS_DENIED);
+		}
+
+		/* folder_id 검증 */
+		if (request.getFolderId() != null) {
+			boolean isFolderValid = folderRepository
+					.findByFolderIdAndUserId(request.getFolderId(), userId)
+					.isPresent();
+			if (!isFolderValid) {
+				log.warn("기기 수정 실패 - 폴더 미존재 또는 권한 없음: folderId={}, userId={}", request.getFolderId(), userId);
+				throw new CustomException(ErrorCode.DEVICE_FOLDER_NOT_FOUND);
+			}
+		}
+
+		device.update(
+				request.getFolderId(),
+				request.getProductName(),
+				request.getBrand(),
+				request.getImageUrl(),
+				request.getProductLinkUrl(),
+				request.getPurchaseDate(),
+				request.getPurchasePrice(),
+				request.getPurchaseStore(),
+				request.getWarrantyMonths(),
+				request.getSerialNumber(),
+				request.getMemo()
+		);
+
+		return DeviceDetailResponse.from(device);
+	}
+
+	/**
+	 * 기기 상품명 단일 수정
+	 * API: PATCH /api/devices/{device_id}/name
+	 * 
+	 * @param userId   : JWT에서 추출한 사용자 ID
+	 * @param deviceId : 수정대상 기기 ID
+	 * @param request  : 상품명 수정 요청
+	 * @return DeviceNameUpdateResponse : 수정된 정보
+	 */
+	@Transactional
+	public DeviceNameUpdateResponse updateDeviceName(Long userId, Long deviceId, DeviceNameUpdateRequest request) {
+		Device device = deviceRepository.findById(deviceId)
+				.orElseThrow(() -> new CustomException(ErrorCode.DEVICE_NOT_FOUND));
+
+		if (!device.getUserId().equals(userId)) {
+			log.warn("기기 상품명 수정 권한 없음: 요청 userId={}, device 소유 userId={}", userId, device.getUserId());
+			throw new CustomException(ErrorCode.DEVICE_ACCESS_DENIED);
+		}
+
+		device.updateName(request.getProductName());
+
+		/* @UpdateTimestamp는 flush 전까지 갱신되지 않으므로 saveAndFlush로 즉시 반영 */
+		Device savedDevice = deviceRepository.saveAndFlush(device);
+
+		return DeviceNameUpdateResponse.from(savedDevice);
 	}
 }

@@ -1,12 +1,15 @@
 package com.After_Buy.DeviceService.controller;
 
 import com.After_Buy.DeviceService.dto.request.DeviceRegisterRequest;
+import com.After_Buy.DeviceService.dto.request.DeviceUpdateRequest;
+import com.After_Buy.DeviceService.dto.request.DeviceNameUpdateRequest;
 import com.After_Buy.DeviceService.dto.response.ApiResponse;
 import com.After_Buy.DeviceService.dto.response.DeviceResponse;
 import com.After_Buy.DeviceService.dto.response.NaverProductDto;
 import com.After_Buy.DeviceService.dto.response.HomeSummaryResponse;
 import com.After_Buy.DeviceService.dto.response.DeviceListResponse;
 import com.After_Buy.DeviceService.dto.response.DeviceDetailResponse;
+import com.After_Buy.DeviceService.dto.response.DeviceNameUpdateResponse;
 import com.After_Buy.DeviceService.security.UserPrincipal;
 import com.After_Buy.DeviceService.service.DeviceService;
 import com.After_Buy.DeviceService.service.NaverSearchService;
@@ -142,6 +145,51 @@ public class DeviceController {
 			@PathVariable("device_id") Long deviceId) {
 		log.info("기기 상세 정보 조회 요청: userId={}, deviceId={}", userPrincipal.getUserId(), deviceId);
 		DeviceDetailResponse response = deviceService.getDeviceDetail(userPrincipal.getUserId(), deviceId);
+		return ResponseEntity.ok(ApiResponse.success(response));
+	}
+
+	/**
+	 * 기기 정보 전체 수정 API
+	 * 기기의 전체 정보(model_name 제외)를 갱신합니다. 무상 보증 기간이나 구매일이 변경될 경우
+	 * 보증 만료일은 서버에서 자동 재계산됩니다.
+	 *
+	 * @param userPrincipal : JWT 토큰에서 추출된 인증 사용자 정보
+	 * @param deviceId : 수정할 대상 기기의 고유 ID
+	 * @param request : 기기 수정 데이터
+	 * @return : 200 OK + 수정된 상세 기기 정보(DeviceDetailResponse)
+	 * @since : 2026.04.08
+	 * @author : 최준혁
+	 */
+	@Operation(summary = "기기 정보 갱신", description = "기기 정보를 전체 교체합니다. model_name은 수정할 수 없으며, 구매일/보증조건 변경 시 보증 만료일이 자동 갱신됩니다.")
+	@PutMapping("/{device_id}")
+	public ResponseEntity<ApiResponse<DeviceDetailResponse>> updateDevice(
+			@AuthenticationPrincipal UserPrincipal userPrincipal,
+			@PathVariable("device_id") Long deviceId,
+			@Valid @RequestBody DeviceUpdateRequest request) {
+		log.info("기기 정보 전체 수정 요청: userId={}, deviceId={}", userPrincipal.getUserId(), deviceId);
+		DeviceDetailResponse response = deviceService.updateDevice(userPrincipal.getUserId(), deviceId, request);
+		return ResponseEntity.ok(ApiResponse.success(response));
+	}
+
+	/**
+	 * 기기 상품명 단일 수정 API
+	 * 아이템 목록 화면 등의 메뉴에서 상품명만 간편하게 변경할 때 사용됩니다.
+	 * 
+	 * @param userPrincipal : JWT 토큰에서 추출된 인증 사용자 정보
+	 * @param deviceId : 수정할 대상 기기의 고유 ID
+	 * @param request : 변경할 상품명 데이터
+	 * @return : 200 OK + 단일 수정 응답 객체
+	 * @since : 2026.04.08
+	 * @author : 최준혁
+	 */
+	@Operation(summary = "기기 상품명 단일 수정", description = "아이템 목록 화면에서 상품명만 간단히 변경할 때 호출합니다.")
+	@PatchMapping("/{device_id}/name")
+	public ResponseEntity<ApiResponse<DeviceNameUpdateResponse>> updateDeviceName(
+			@AuthenticationPrincipal UserPrincipal userPrincipal,
+			@PathVariable("device_id") Long deviceId,
+			@Valid @RequestBody DeviceNameUpdateRequest request) {
+		log.info("기기 상품명 단일 수정 요청: userId={}, deviceId={}, newProductName={}", userPrincipal.getUserId(), deviceId, request.getProductName());
+		DeviceNameUpdateResponse response = deviceService.updateDeviceName(userPrincipal.getUserId(), deviceId, request);
 		return ResponseEntity.ok(ApiResponse.success(response));
 	}
 }
