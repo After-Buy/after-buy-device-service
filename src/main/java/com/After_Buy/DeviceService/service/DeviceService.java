@@ -290,4 +290,25 @@ public class DeviceService {
 
 		return DeviceNameUpdateResponse.from(savedDevice);
 	}
+
+	/**
+	 * 기기 삭제
+	 * 기기를 영구 삭제합니다.
+	 *
+	 * @param userId   : JWT에서 추출한 사용자 ID
+	 * @param deviceId : 삭제대상 기기 ID
+	 * @throws CustomException : 기기가 존재하지 않거나, 본인 기기가 아닌 경우 발생
+	 */
+	@Transactional
+	public void deleteDevice(Long userId, Long deviceId) {
+		Device device = deviceRepository.findById(deviceId)
+				.orElseThrow(() -> new CustomException(ErrorCode.DEVICE_NOT_FOUND));
+
+		if (!device.getUserId().equals(userId)) {
+			log.warn("기기 삭제 권한 없음: 요청 userId={}, device 소유 userId={}", userId, device.getUserId());
+			throw new CustomException(ErrorCode.DEVICE_ACCESS_DENIED);
+		}
+
+		deviceRepository.delete(device);
+	}
 }
