@@ -4,6 +4,9 @@ import com.After_Buy.DeviceService.dto.request.DeviceRegisterRequest;
 import com.After_Buy.DeviceService.dto.response.DeviceResponse;
 import com.After_Buy.DeviceService.dto.response.HomeDeviceDto;
 import com.After_Buy.DeviceService.dto.response.HomeSummaryResponse;
+import com.After_Buy.DeviceService.dto.response.DeviceListResponse;
+import com.After_Buy.DeviceService.dto.response.DeviceListItemDto;
+import com.After_Buy.DeviceService.dto.response.DeviceDetailResponse;
 import com.After_Buy.DeviceService.dto.response.SummaryDto;
 import com.After_Buy.DeviceService.entity.Device;
 import com.After_Buy.DeviceService.exception.CustomException;
@@ -161,5 +164,53 @@ public class DeviceService {
 		}
 
 		return builder.build();
+	}
+
+	/**
+	 * 미분류 기기 목록 조회
+	 * folder_id가 null인 미분류 기기 목록을 정렬 조건에 따라 조회합니다.
+	 *
+	 * @param userId 조회할 사용자 ID
+	 * @param sort 정렬 조건 (created_desc: 최신순, expiry_asc: 보증 만료 임박순)
+	 * @return DeviceListResponse (미분류 기기 목록)
+	 */
+	@Transactional(readOnly = true)
+	public DeviceListResponse getDeviceList(Long userId, String sort) {
+		List<Device> devices;
+		if ("expiry_asc".equalsIgnoreCase(sort)) {
+			devices = deviceRepository.findByUserIdAndFolderIdIsNullOrderByWarrantyExpiryDateAsc(userId);
+		} else {
+			// 기본값은 created_desc
+			devices = deviceRepository.findByUserIdAndFolderIdIsNullOrderByCreatedAtDesc(userId);
+		}
+
+		List<DeviceListItemDto> deviceItems = devices.stream()
+				.map(DeviceListItemDto::from)
+				.collect(Collectors.toList());
+
+		return DeviceListResponse.of(deviceItems);
+	}
+
+	/**
+	 * 기기 상세 내역 조회
+	 * device_id를 기반으로 전체 기기 상세 정보를 조회합니다. 본인 소유가 아닌 경우 조회할 수 없습니다.
+	 *
+	 * @param userId 조회 요청을 한 사용자 ID (JWT)
+	 * @param deviceId 조회할 대상 기기 ID
+	 * @return DeviceDetailResponse (기기 상세 정보)
+	 * @throws CustomException 기기가 없을 경우 DEVICE_NOT_FOUND (404),
+	 *                         타인의 기기인 경우 DEVICE_ACCESS_DENIED (403)
+	 */
+	@Transactional(readOnly = true)
+	public DeviceDetailResponse getDeviceDetail(Long userId, Long deviceId) {
+		Device device = deviceRepository.findById(deviceId)
+				.orElseThrow(() -> new CustomException(ErrorCode.DEVICE_NOT_FOUND));
+
+		if (!device.getUserId().equals(userId)) {
+			log.warn("기기 접근 권한 없음: 요청 userId={}, device 소유 userId={}", userId, device.getUserId());
+			throw new CustomException(ErrorCode.DEVICE_ACCESS_DENIED);
+		}
+
+		return DeviceDetailResponse.from(device);
 	}
 }

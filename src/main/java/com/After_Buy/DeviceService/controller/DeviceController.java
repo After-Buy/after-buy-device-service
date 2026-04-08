@@ -5,6 +5,8 @@ import com.After_Buy.DeviceService.dto.response.ApiResponse;
 import com.After_Buy.DeviceService.dto.response.DeviceResponse;
 import com.After_Buy.DeviceService.dto.response.NaverProductDto;
 import com.After_Buy.DeviceService.dto.response.HomeSummaryResponse;
+import com.After_Buy.DeviceService.dto.response.DeviceListResponse;
+import com.After_Buy.DeviceService.dto.response.DeviceDetailResponse;
 import com.After_Buy.DeviceService.security.UserPrincipal;
 import com.After_Buy.DeviceService.service.DeviceService;
 import com.After_Buy.DeviceService.service.NaverSearchService;
@@ -98,6 +100,48 @@ public class DeviceController {
 			@RequestParam("modelName") String modelName) {
 		log.info("네이버 쇼핑 API 모델명 검색 요청: modelName={}", modelName);
 		NaverProductDto response = naverSearchService.searchProduct(modelName);
+		return ResponseEntity.ok(ApiResponse.success(response));
+	}
+
+	/**
+	 * 미분류 기기 목록 조회 API
+	 * 미분류(folder_id = NULL) 상태의 기기 목록을 조회합니다.
+	 * 
+	 * @param userPrincipal : JWT 토큰에서 추출된 인증 사용자 정보
+	 * @param sort : 정렬 조건 (created_desc: 최신등록순(기본값), expiry_asc: 보증만료임박순)
+	 * @return : 200 OK + 미분류 기기 목록(DeviceListResponse)
+	 * @since : 2026.04.08
+	 * @author : 최준혁
+	 */
+	@Operation(summary = "미분류 기기 목록 조회", description = "폴더에 속하지 않은 미분류 기기 목록을 정렬 조건에 따라 조회합니다.")
+	@GetMapping
+	public ResponseEntity<ApiResponse<DeviceListResponse>> getDeviceList(
+			@AuthenticationPrincipal UserPrincipal userPrincipal,
+			@RequestParam(value = "sort", defaultValue = "created_desc") String sort) {
+		log.info("미분류 기기 목록 조회 요청: userId={}, sort={}", userPrincipal.getUserId(), sort);
+		DeviceListResponse response = deviceService.getDeviceList(userPrincipal.getUserId(), sort);
+		return ResponseEntity.ok(ApiResponse.success(response));
+	}
+
+	/**
+	 * 기기 상세 내역 조회 API
+	 * 기기 ID를 기반으로 해당 기기의 모든 상세 정보와 보증 잔여 일수 실시간 계산 결과를 조회합니다.
+	 * 
+	 * @param userPrincipal : JWT 토큰에서 추출된 인증 사용자 정보
+	 * @param deviceId : 조회할 대상 기기의 고유 ID
+	 * @return : 200 OK + 상세 기기 정보(DeviceDetailResponse)
+	 * @throws com.After_Buy.DeviceService.exception.CustomException :
+	 *             본인 기기가 아닌 경우 DEVICE-002 (403), 존재하지 않는 경우 DEVICE-003 (404)
+	 * @since : 2026.04.08
+	 * @author : 최준혁
+	 */
+	@Operation(summary = "기기 상세 내역 조회", description = "특정 기기의 상세 정보와 실시간 보증 잔여 일수를 반환합니다. 본인의 기기만 조회할 수 있습니다.")
+	@GetMapping("/{device_id}")
+	public ResponseEntity<ApiResponse<DeviceDetailResponse>> getDeviceDetail(
+			@AuthenticationPrincipal UserPrincipal userPrincipal,
+			@PathVariable("device_id") Long deviceId) {
+		log.info("기기 상세 정보 조회 요청: userId={}, deviceId={}", userPrincipal.getUserId(), deviceId);
+		DeviceDetailResponse response = deviceService.getDeviceDetail(userPrincipal.getUserId(), deviceId);
 		return ResponseEntity.ok(ApiResponse.success(response));
 	}
 }

@@ -1,5 +1,7 @@
 package com.After_Buy.DeviceService.dto.request;
 
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
@@ -22,6 +24,7 @@ import java.time.LocalDate;
  */
 @Getter
 @NoArgsConstructor
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class DeviceRegisterRequest {
 
 	/* ===== 선택 항목 ===== */

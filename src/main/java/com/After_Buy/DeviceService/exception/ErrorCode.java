@@ -22,8 +22,11 @@ public enum ErrorCode {
 	/** 폴더가 존재하지 않거나 본인 소유가 아닌 경우 */
 	DEVICE_FOLDER_NOT_FOUND(HttpStatus.NOT_FOUND, "DEVICE-001", "존재하지 않거나 접근 권한이 없는 폴더입니다."),
 
-	/** 기기가 존재하지 않거나 본인 소유가 아닌 경우 */
-	DEVICE_NOT_FOUND(HttpStatus.NOT_FOUND, "DEVICE-002", "존재하지 않거나 접근 권한이 없는 기기입니다."),
+	/** 본인의 기기가 아닌 경우 (403 Forbidden) */
+	DEVICE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "DEVICE-002", "본인의 기기에만 접근할 수 있습니다."),
+
+	/** 기기가 존재하지 않는 경우 (404 Not Found) */
+	DEVICE_NOT_FOUND(HttpStatus.NOT_FOUND, "DEVICE-003", "존재하지 않는 기기입니다."),
 
 	/* ===== 검색 대행 관련 (SEARCH-0XX) ===== */
 
