@@ -107,20 +107,20 @@ public class Device {
 	 * 기기 등록 Builder 생성자
 	 * Service 계층에서 등록 시 사용하며, warrantyExpiryDate는 Service에서 자동 계산하여 주입합니다.
 	 *
-	 * @param userId              : 소유 사용자 ID
-	 * @param folderId            : 소속 폴더 ID (null = 미분류)
-	 * @param productName         : 상품명
-	 * @param modelName           : 모델명
-	 * @param brand               : 브랜드명
-	 * @param imageUrl            : 이미지 URL
-	 * @param productLinkUrl      : 제품 링크 URL
-	 * @param purchaseDate        : 구매일
-	 * @param purchasePrice       : 구매 가격
-	 * @param purchaseStore       : 구매처
-	 * @param warrantyMonths      : 보증 기간(개월)
-	 * @param warrantyExpiryDate  : 보증 만료일 (자동 계산)
-	 * @param serialNumber        : 시리얼 넘버
-	 * @param memo                : 메모
+	 * @param userId             : 소유 사용자 ID
+	 * @param folderId           : 소속 폴더 ID (null = 미분류)
+	 * @param productName        : 상품명
+	 * @param modelName          : 모델명
+	 * @param brand              : 브랜드명
+	 * @param imageUrl           : 이미지 URL
+	 * @param productLinkUrl     : 제품 링크 URL
+	 * @param purchaseDate       : 구매일
+	 * @param purchasePrice      : 구매 가격
+	 * @param purchaseStore      : 구매처
+	 * @param warrantyMonths     : 보증 기간(개월)
+	 * @param warrantyExpiryDate : 보증 만료일 (자동 계산)
+	 * @param serialNumber       : 시리얼 넘버
+	 * @param memo               : 메모
 	 */
 	@Builder
 	public Device(Long userId, Long folderId, String productName, String modelName, String brand,
@@ -141,5 +141,55 @@ public class Device {
 		this.warrantyExpiryDate = warrantyExpiryDate;
 		this.serialNumber = serialNumber;
 		this.memo = memo;
+	}
+
+	/**
+	 * 기기 정보 전체 수정 (model_name 제외)
+	 * API 명세서 요구사항에 따라 warranty_months 또는 purchase_date 변경 시
+	 * warranty_expiry_date가 자동 재계산됩니다.
+	 *
+	 * @param folderId       : 소속 폴더 ID (미분류 시 null)
+	 * @param productName    : 상품명
+	 * @param brand          : 브랜드명
+	 * @param imageUrl       : 기기 이미지 URL
+	 * @param productLinkUrl : 공식 제품 페이지 URL
+	 * @param purchaseDate   : 구매일
+	 * @param purchasePrice  : 구매 가격
+	 * @param purchaseStore  : 구매처
+	 * @param warrantyMonths : 무상 보증 기간 개월 수
+	 * @param serialNumber   : 시리얼 넘버
+	 * @param memo           : 사용자 메모
+	 * @since : 2026.04.08
+	 * @author : 최준혁
+	 */
+	public void update(Long folderId, String productName, String brand, String imageUrl,
+			String productLinkUrl, LocalDate purchaseDate, BigDecimal purchasePrice,
+			String purchaseStore, Integer warrantyMonths, String serialNumber, String memo) {
+		this.folderId = folderId;
+		this.productName = productName;
+		this.brand = brand;
+		this.imageUrl = imageUrl;
+		this.productLinkUrl = productLinkUrl;
+		this.purchaseDate = purchaseDate;
+		this.purchasePrice = purchasePrice;
+		this.purchaseStore = purchaseStore;
+		this.warrantyMonths = warrantyMonths;
+		this.serialNumber = serialNumber;
+		this.memo = memo;
+
+		/* warranty_expiry_date 자동 갱신: 구매일 + 보증기간(개월) */
+		this.warrantyExpiryDate = this.purchaseDate.plusMonths(this.warrantyMonths);
+	}
+
+	/**
+	 * 기기 상품명 단일 수정
+	 * PATCH /api/devices/{device_id}/name 용
+	 *
+	 * @param productName : 변경할 상품명
+	 * @since : 2026.04.08
+	 * @author : 최준혁
+	 */
+	public void updateName(String productName) {
+		this.productName = productName;
 	}
 }
