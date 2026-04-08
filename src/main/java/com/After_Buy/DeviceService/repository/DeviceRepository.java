@@ -38,4 +38,10 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
     // 현재 기점 가장 만료일이 근접한 1개의 기기 조회 (Native Query 이용)
     @Query(value = "SELECT * FROM devices WHERE user_id = :userId ORDER BY ABS(DATEDIFF(warranty_expiry_date, CURRENT_DATE)) ASC LIMIT 1", nativeQuery = true)
     Optional<Device> findTopByUserIdOrderByWarrantyExpiryDateClosest(@Param("userId") Long userId);
+
+    // 미분류 기기 목록 조회 (최신 등록순)
+    List<Device> findByUserIdAndFolderIdIsNullOrderByCreatedAtDesc(Long userId);
+
+    // 미분류 기기 목록 조회 (보증 만료 임박순)
+    List<Device> findByUserIdAndFolderIdIsNullOrderByWarrantyExpiryDateAsc(Long userId);
 }
