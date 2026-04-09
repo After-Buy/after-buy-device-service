@@ -150,7 +150,31 @@ public class FolderService {
         
         return com.After_Buy.DeviceService.dto.response.FolderCreateResponse.from(folder);
     }
+
+    /**
+     * 폴더 삭제 로직
+     * 물리적 DB 설계에 따른 (ON DELETE CASCADE) 기능으로 인해 하위 폴더와 기기들이 자동 삭제됩니다.
+     * 따라서 이 메서드에서는 폴더의 존재 및 권한 인증 후 부모만 삭제 처리합니다.
+     *
+     * @param userId   : 삭제 요청 유저 ID
+     * @param folderId : 삭제 대상 폴더 ID
+     */
+    @org.springframework.transaction.annotation.Transactional
+    public void deleteFolder(Long userId, Long folderId) {
+        // 1. 존재 여부 점검 (DEVICE-005)
+        com.After_Buy.DeviceService.entity.Folder folder = folderRepository.findById(folderId)
+                .orElseThrow(() -> new com.After_Buy.DeviceService.exception.CustomException(com.After_Buy.DeviceService.exception.ErrorCode.FOLDER_NOT_FOUND));
+
+        // 2. 소유권 점검 (DEVICE-004)
+        if (!folder.getUserId().equals(userId)) {
+            throw new com.After_Buy.DeviceService.exception.CustomException(com.After_Buy.DeviceService.exception.ErrorCode.FOLDER_ACCESS_DENIED);
+        }
+
+        // 3. 부모 폴더 삭제 수행 (DB FK 연쇄 삭제 트리거 작동)
+        folderRepository.delete(folder);
+    }
 }
+
 
 
 

@@ -121,7 +121,31 @@ public class FolderController {
         com.After_Buy.DeviceService.dto.response.FolderCreateResponse response = folderService.updateFolderName(userPrincipal.getUserId(), folderId, request);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
+
+    /**
+     * 폴더 삭제 API
+     * 특정 폴더를 영구적으로 삭제합니다.
+     * 폴더 삭제 시 내부에 속해 있는 하위 폴더 및 기기도 데이터베이스 CASCADE 정책에 의해 모두 삭제됩니다.
+     *
+     * @param userPrincipal : 인증된 사용자
+     * @param folderId      : 삭제 대상 폴더 ID
+     * @return : 200 OK + 단순 메시지 응답
+     * @since : 2026.04.09
+     * @author : 최준혁
+     */
+    @Operation(summary = "폴더 삭제", description = "명시된 폴더와 해당 폴더 내부의 모든 하위 폴더/기기들을 연쇄 삭제합니다.")
+    @org.springframework.web.bind.annotation.DeleteMapping("/{folder_id}")
+    public ResponseEntity<ApiResponse<Void>> deleteFolder(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @org.springframework.web.bind.annotation.PathVariable("folder_id") Long folderId) {
+        log.info("폴더 삭제 요청: userId={}, folderId={}", userPrincipal.getUserId(), folderId);
+        
+        folderService.deleteFolder(userPrincipal.getUserId(), folderId);
+        
+        return ResponseEntity.ok(ApiResponse.successMessage("폴더 및 내부 항목이 모두 삭제되었습니다."));
+    }
 }
+
 
 
 
