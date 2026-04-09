@@ -20,6 +20,8 @@ import com.After_Buy.DeviceService.dto.response.BreadcrumbDto;
 import com.After_Buy.DeviceService.dto.response.FolderCreateResponse;
 import com.After_Buy.DeviceService.dto.request.FolderCreateRequest;
 import com.After_Buy.DeviceService.dto.request.FolderUpdateNameRequest;
+import com.After_Buy.DeviceService.dto.request.BulkMoveRequest;
+import com.After_Buy.DeviceService.dto.request.BulkDeleteRequest;
 import com.After_Buy.DeviceService.entity.Folder;
 import com.After_Buy.DeviceService.exception.CustomException;
 import com.After_Buy.DeviceService.exception.ErrorCode;
@@ -206,6 +208,121 @@ public class FolderService {
         for (Long subId : subFolderIds) {
             deleteSubFoldersAndDevicesRecursively(subId);
             folderRepository.deleteById(subId);
+        }
+    }
+
+    /**
+     * 다중 항목 일괄 이동 로직
+     * 폴더와 기기들을 일괄 이동시킵니다.
+     *
+     * @param userId  : 이동을 요청하는 유저 ID
+     * @param request : 이동 항목들의 리스트와 최종 도달 폴더 ID
+     * @since : 2026.04.09
+     * @author : 최준혁
+     */
+    @Transactional
+    public void bulkMove(Long userId, BulkMoveRequest request) {
+        List<Long> folderIds = request.getFolderIds();
+        List<Long> deviceIds = request.getDeviceIds();
+
+        boolean isFolderIdsEmpty = (folderIds == null || folderIds.isEmpty());
+        boolean isDeviceIdsEmpty = (deviceIds == null || deviceIds.isEmpty());
+
+        // 1. 빈 리스트 점검 (DEVICE-006)
+        if (isFolderIdsEmpty && isDeviceIdsEmpty) {
+            throw new CustomException(ErrorCode.BULK_ACTION_EMPTY_SELECTION);
+        }
+
+        // 2. 타겟 폴더 상태 및 모순 검증
+        Long targetFolderId = request.getTargetFolderId();
+        if (targetFolderId != null) {
+            // 대상 폴더 존재 유무(DEVICE-005) 및 소유권 여부(DEVICE-004) 확인
+            Folder targetFolder = folderRepository.findById(targetFolderId)
+                    .orElseThrow(() -> new CustomException(ErrorCode.FOLDER_NOT_FOUND));
+
+            if (!targetFolder.getUserId().equals(userId)) {
+                throw new CustomException(ErrorCode.FOLDER_ACCESS_DENIED);
+            }
+
+            // 폴더를 본인 스스로 포함하도록 이동 요청하는 루프 차단
+            if (!isFolderIdsEmpty && folderIds.contains(targetFolderId)) {
+                throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
+            }
+        }
+
+        // 3. 폴더들 소유권 검수 및 부모 변경
+        if (!isFolderIdsEmpty) {
+            List<Folder> folders = folderRepository.findAllById(folderIds);
+            for (Folder folder : folders) {
+                if (!folder.getUserId().equals(userId)) {
+                    throw new CustomException(ErrorCode.BULK_ACTION_ACCESS_DENIED);
+                }
+                folder.updateParentFolderId(targetFolderId);
+            }
+        }
+
+        // 4. 기기들 소유권 검수 및 폴더 주소 변경
+        if (!isDeviceIdsEmpty) {
+            List<Device> devices = deviceRepository.findAllById(deviceIds);
+            for (Device device : devices) {
+                if (!device.getUserId().equals(userId)) {
+                    throw new CustomException(ErrorCode.BULK_ACTION_ACCESS_DENIED);
+                }
+                device.updateFolderId(targetFolderId);
+            }
+        }
+    }
+
+    /**
+     * 다중 항목 일괄 삭제 로직
+     * 폴더와 기기들을 일괄 삭제시킵니다. 대상 폴더는 하위 구조까지 재귀적으로 삭제됩니다.
+     *
+     * @param userId  : 삭제를 요청하는 유저 ID
+     * @param request : 삭제 항목들의 리스트
+     * @since : 2026.04.09
+     * @author : 최준혁
+     */
+    @Transactional
+    public void bulkDelete(Long userId, BulkDeleteRequest request) {
+        List<Long> folderIds = request.getFolderIds();
+        List<Long> deviceIds = request.getDeviceIds();
+
+        boolean isFolderIdsEmpty = (folderIds == null || folderIds.isEmpty());
+        boolean isDeviceIdsEmpty = (deviceIds == null || deviceIds.isEmpty());
+
+        if (isFolderIdsEmpty && isDeviceIdsEmpty) {
+            throw new CustomException(ErrorCode.BULK_ACTION_EMPTY_SELECTION);
+        }
+
+        // 1. 기기 삭제 로직
+        if (!isDeviceIdsEmpty) {
+            List<Device> devices = deviceRepository.findAllById(deviceIds);
+            for (Device device : devices) {
+                if (!device.getUserId().equals(userId)) {
+                    throw new CustomException(ErrorCode.BULK_ACTION_ACCESS_DENIED);
+                }
+            }
+            deviceRepository.deleteAll(devices);
+        }
+
+        // 2. 폴더 하위 연쇄 삭제 로직
+        if (!isFolderIdsEmpty) {
+            List<Folder> folders = folderRepository.findAllById(folderIds);
+            
+            // 삭제 전 모든 폴더의 소유권 먼저 검증 (도중 실패하여 DB 정합성 꺾임 방지)
+            for (Folder folder : folders) {
+                if (!folder.getUserId().equals(userId)) {
+                    throw new CustomException(ErrorCode.BULK_ACTION_ACCESS_DENIED);
+                }
+            }
+
+            // 소유권 통과 시 개별 폴더에 대해 DFS 하위 연쇄 삭제 적용
+            for (Folder folder : folders) {
+                if (folderRepository.existsById(folder.getFolderId())) {
+                    deleteSubFoldersAndDevicesRecursively(folder.getFolderId());
+                    folderRepository.delete(folder);
+                }
+            }
         }
     }
 }

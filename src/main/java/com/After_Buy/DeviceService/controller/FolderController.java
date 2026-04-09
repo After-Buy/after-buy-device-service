@@ -23,6 +23,8 @@ import jakarta.validation.Valid;
 
 import com.After_Buy.DeviceService.dto.request.FolderCreateRequest;
 import com.After_Buy.DeviceService.dto.request.FolderUpdateNameRequest;
+import com.After_Buy.DeviceService.dto.request.BulkMoveRequest;
+import com.After_Buy.DeviceService.dto.request.BulkDeleteRequest;
 import com.After_Buy.DeviceService.dto.response.FolderCreateResponse;
 import com.After_Buy.DeviceService.dto.response.FolderItemsResponse;
 
@@ -155,6 +157,52 @@ public class FolderController {
         folderService.deleteFolder(userPrincipal.getUserId(), folderId);
         
         return ResponseEntity.ok(ApiResponse.successMessage("폴더 및 내부 항목이 모두 삭제되었습니다."));
+    }
+
+    /**
+     * 폴더/기기 일괄 이동 API
+     * 선택한 여러 개의 폴더 및 기기들을 특정 폴더(루트 포함) 내로 한 번에 이동시킵니다.
+     *
+     * @param userPrincipal : 인증된 사용자
+     * @param request       : 이동 요청 데이터 (대상 ID 리스트들과 타겟 폴더 ID)
+     * @return : 200 OK + 성공 메시지
+     * @since : 2026.04.09
+     * @author : 최준혁
+     */
+    @Operation(summary = "폴더/기기 일괄 이동", description = "선택한 폴더 및 기기들을 특정 이동 대상 폴더로 옮깁니다.")
+    @PatchMapping("/bulk-move")
+    public ResponseEntity<ApiResponse<Void>> bulkMove(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @Valid @RequestBody BulkMoveRequest request) {
+        log.info("항목 일괄 이동 요청: userId={}, folders={}, devices={}, targetFolderId={}", 
+                 userPrincipal.getUserId(), request.getFolderIds(), request.getDeviceIds(), request.getTargetFolderId());
+                 
+        folderService.bulkMove(userPrincipal.getUserId(), request);
+        
+        return ResponseEntity.ok(ApiResponse.successMessage("항목이 이동되었습니다."));
+    }
+
+    /**
+     * 폴더/기기 일괄 삭제 API
+     * 선택한 여러 개의 폴더 및 기기들을 연쇄 삭제합니다.
+     *
+     * @param userPrincipal : 인증된 사용자
+     * @param request       : 삭제 요청 데이터 (대상 ID 리스트들)
+     * @return : 200 OK + 성공 메시지
+     * @since : 2026.04.09
+     * @author : 최준혁
+     */
+    @Operation(summary = "폴더/기기 일괄 삭제", description = "선택한 폴더 및 기기들을 모두 삭제합니다.")
+    @DeleteMapping("/bulk-delete")
+    public ResponseEntity<ApiResponse<Void>> bulkDelete(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @Valid @RequestBody BulkDeleteRequest request) {
+        log.info("항목 일괄 삭제 요청: userId={}, folders={}, devices={}", 
+                 userPrincipal.getUserId(), request.getFolderIds(), request.getDeviceIds());
+                 
+        folderService.bulkDelete(userPrincipal.getUserId(), request);
+        
+        return ResponseEntity.ok(ApiResponse.successMessage("선택한 항목이 삭제되었습니다."));
     }
 }
 

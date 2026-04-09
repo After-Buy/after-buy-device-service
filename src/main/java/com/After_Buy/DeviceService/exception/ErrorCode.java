@@ -37,6 +37,11 @@ public enum ErrorCode {
 	/** 부모 폴더 미존재 (404 Not Found) */
 	PARENT_FOLDER_NOT_FOUND(HttpStatus.NOT_FOUND, "DEVICE-005", "존재하지 않는 상위 폴더입니다."),
 
+	/** 일괄 처리 대상 항목 없음 (400 Bad Request) */
+	BULK_ACTION_EMPTY_SELECTION(HttpStatus.BAD_REQUEST, "DEVICE-006", "요청할 폴더 또는 기기를 하나 이상 선택해야 합니다."),
+
+	/** 타인 소유 물품 권한 없음 (403 Forbidden) */
+	BULK_ACTION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "DEVICE-007", "본인 소유의 항목만 접근할 수 있습니다."),
 
 	/* ===== 검색 대행 관련 (SEARCH-0XX) ===== */
 

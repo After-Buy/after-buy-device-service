@@ -192,4 +192,13 @@ public class Device {
 	public void updateName(String productName) {
 		this.productName = productName;
 	}
+
+	/**
+	 * 기기 이동 메서드
+	 *
+	 * @param folderId : 이동할 목적지 폴더 ID (루트로 이동 시 null)
+	 */
+	public void updateFolderId(Long folderId) {
+		this.folderId = folderId;
+	}
 }
