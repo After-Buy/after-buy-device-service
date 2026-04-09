@@ -64,5 +64,14 @@ public class Folder {
 	public void updateFolderName(String folderName) {
 		this.folderName = folderName;
 	}
+
+	/**
+	 * 폴더 이동 메서드
+	 *
+	 * @param parentFolderId : 이동할 부모 폴더 ID (루트로 이동 시 null)
+	 */
+	public void updateParentFolderId(Long parentFolderId) {
+		this.parentFolderId = parentFolderId;
+	}
 }
 
