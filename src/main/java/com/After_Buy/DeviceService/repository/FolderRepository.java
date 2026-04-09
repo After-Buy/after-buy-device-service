@@ -1,9 +1,13 @@
 package com.After_Buy.DeviceService.repository;
 
+import com.After_Buy.DeviceService.dto.response.FolderDto;
 import com.After_Buy.DeviceService.entity.Folder;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
+import java.util.List;
 
 /**
  * 폴더 레포지토리
@@ -26,4 +30,51 @@ public interface FolderRepository extends JpaRepository<Folder, Long> {
 	 * @return : 조건에 맞는 폴더 Optional (없으면 empty)
 	 */
 	Optional<Folder> findByFolderIdAndUserId(Long folderId, Long userId);
+
+	/**
+	 * 사용자 ID 기반 루트 폴더(최상위) 목록 조회 및 직속 하위 항목 수 계산
+	 * 
+	 * @param userId : 조회할 폴더의 소유자 ID
+	 * @return : 루트 폴더와 그 자식 개수가 포함된 DTO 목록 반환
+	 */
+	@Query("SELECT new com.After_Buy.DeviceService.dto.response.FolderDto(" +
+			"f.folderId, f.folderName, f.parentFolderId, " +
+			"(COALESCE((SELECT COUNT(subF) FROM Folder subF WHERE subF.parentFolderId = f.folderId), 0L) + " +
+			"COALESCE((SELECT COUNT(d) FROM Device d WHERE d.folderId = f.folderId), 0L)), " +
+			"f.createdAt, f.updatedAt) " +
+			"FROM Folder f " +
+			"WHERE f.userId = :userId AND f.parentFolderId IS NULL " +
+			"ORDER BY f.createdAt DESC")
+	List<FolderDto> findRootFoldersWithChildCount(@Param("userId") Long userId);
+
+	/**
+	 * 특정 폴더 내부의 직속 하위 폴더 목록 조회 및 각각의 하위 개수 계산
+	 * 
+	 * @param parentFolderId : 조회할 부모 폴더 ID
+	 * @param userId : 권한 검증용 소유자 ID
+	 * @return : 하위 폴더 목록 (각 내부 항목 개수 포함)
+	 */
+	@Query("SELECT new com.After_Buy.DeviceService.dto.response.FolderDto(" +
+			"f.folderId, f.folderName, f.parentFolderId, " +
+			"(COALESCE((SELECT COUNT(subF) FROM Folder subF WHERE subF.parentFolderId = f.folderId), 0L) + " +
+			"COALESCE((SELECT COUNT(d) FROM Device d WHERE d.folderId = f.folderId), 0L)), " +
+			"f.createdAt, f.updatedAt) " +
+			"FROM Folder f " +
+			"WHERE f.userId = :userId AND f.parentFolderId = :parentFolderId " +
+			"ORDER BY f.createdAt DESC")
+	List<FolderDto> findSubFoldersWithChildCount(@Param("parentFolderId") Long parentFolderId, @Param("userId") Long userId);
+
+	/**
+	 * 특정 부모를 가지는 직속 자식 폴더의 개수 계산
+	 */
+	Long countByParentFolderId(Long parentFolderId);
+
+	/**
+	 * 특정 부모의 직속 자식들의 ID 목록만 조회 (재귀 삭제용)
+	 * @param parentFolderId : 부모 폴더 ID
+	 * @return : 하위 폴더 ID 리스트
+	 */
+	@Query("SELECT f.folderId FROM Folder f WHERE f.parentFolderId = :parentFolderId")
+	List<Long> findFolderIdsByParentFolderId(@Param("parentFolderId") Long parentFolderId);
 }
+

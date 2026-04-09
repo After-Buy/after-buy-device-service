@@ -1,6 +1,8 @@
 package com.After_Buy.DeviceService.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
@@ -19,6 +21,8 @@ import java.time.LocalDateTime;
  * @author : 최준혁
  */
 @Getter
+@Builder
+@AllArgsConstructor
 @NoArgsConstructor
 @Entity
 @Table(name = "folders")
@@ -51,4 +55,14 @@ public class Folder {
 	@UpdateTimestamp
 	@Column(name = "updated_at", nullable = false)
 	private LocalDateTime updatedAt;
+
+	/**
+	 * 폴더 이름 변경 메서드
+	 *
+	 * @param folderName : 변경할 새로운 폴더 명
+	 */
+	public void updateFolderName(String folderName) {
+		this.folderName = folderName;
+	}
 }
+

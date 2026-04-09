@@ -44,4 +44,15 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
 
     // 미분류 기기 목록 조회 (보증 만료 임박순)
     List<Device> findByUserIdAndFolderIdIsNullOrderByWarrantyExpiryDateAsc(Long userId);
+
+    // 특정 폴더 내부의 분류된 기기 목록 반환 (최신순)
+    List<Device> findByUserIdAndFolderIdOrderByCreatedAtDesc(Long userId, Long folderId);
+
+    // 특정 폴더 내부에 포함된 기기의 개수 계산
+    Long countByFolderId(Long folderId);
+
+    // 특정 폴더 내부에 포함된 모든 기기를 일괄 삭제 (애플리케이션 레벨 CASCADE 용)
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("DELETE FROM Device d WHERE d.folderId = :folderId")
+    void deleteByFolderId(@org.springframework.data.repository.query.Param("folderId") Long folderId);
 }
