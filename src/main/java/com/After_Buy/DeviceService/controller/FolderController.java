@@ -73,5 +73,30 @@ public class FolderController {
         com.After_Buy.DeviceService.dto.response.FolderItemsResponse response = folderService.getFolderItems(userPrincipal.getUserId(), folderId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
+
+    /**
+     * 폴더 생성 API
+     * 루트 또는 특정 폴더 경로 내부에 새로운 폴더를 생성합니다.
+     * 
+     * @param userPrincipal : JWT에서 파싱된 인증 정보
+     * @param request       : 생성 요청 정보 (폴더명 필수)
+     * @return : 201 Created 상태코드 및 방금 생성된 폴더 내역
+     * @since : 2026.04.09
+     * @author : 최준혁
+     */
+    @Operation(summary = "폴더 생성", description = "새로운 기기 분류용 폴더를 생성합니다.")
+    @org.springframework.web.bind.annotation.PostMapping
+    public ResponseEntity<ApiResponse<com.After_Buy.DeviceService.dto.response.FolderCreateResponse>> createFolder(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody com.After_Buy.DeviceService.dto.request.FolderCreateRequest request) {
+        log.info("폴더 생성 요청: userId={}, folderName={}, parentId={}",
+                 userPrincipal.getUserId(), request.getFolderName(), request.getParentFolderId());
+
+        com.After_Buy.DeviceService.dto.response.FolderCreateResponse response = folderService.createFolder(userPrincipal.getUserId(), request);
+
+        return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
+                             .body(ApiResponse.success(response));
+    }
 }
+
 

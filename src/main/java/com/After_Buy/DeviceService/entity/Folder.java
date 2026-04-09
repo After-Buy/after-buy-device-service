@@ -1,6 +1,8 @@
 package com.After_Buy.DeviceService.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
@@ -19,6 +21,8 @@ import java.time.LocalDateTime;
  * @author : 최준혁
  */
 @Getter
+@Builder
+@AllArgsConstructor
 @NoArgsConstructor
 @Entity
 @Table(name = "folders")

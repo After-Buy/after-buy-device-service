@@ -99,5 +99,31 @@ public class FolderService {
 
         return com.After_Buy.DeviceService.dto.response.FolderItemsResponse.of(currentFolderDto, breadcrumb, subFolders, devices);
     }
+
+    /**
+     * 폴더 생성 기능
+     * 부모 폴더가 지정된 경우, 부모 폴더의 소유권 및 존재 여부를 검사하고 하위로 생성합니다.
+     *
+     * @param userId  : 폴더를 생성하려는 유저 ID
+     * @param request : 바디로 넘겨받은 폴더 생성 요청 속성(이름, 부모 폴더 ID)
+     * @return : 생성 완료된 폴더 객체 반환
+     */
+    @org.springframework.transaction.annotation.Transactional
+    public com.After_Buy.DeviceService.dto.response.FolderCreateResponse createFolder(Long userId, com.After_Buy.DeviceService.dto.request.FolderCreateRequest request) {
+        if (request.getParentFolderId() != null) {
+            folderRepository.findByFolderIdAndUserId(request.getParentFolderId(), userId)
+                    .orElseThrow(() -> new com.After_Buy.DeviceService.exception.CustomException(com.After_Buy.DeviceService.exception.ErrorCode.PARENT_FOLDER_NOT_FOUND));
+        }
+
+        com.After_Buy.DeviceService.entity.Folder folder = com.After_Buy.DeviceService.entity.Folder.builder()
+                .userId(userId)
+                .folderName(request.getFolderName())
+                .parentFolderId(request.getParentFolderId())
+                .build();
+
+        com.After_Buy.DeviceService.entity.Folder savedFolder = folderRepository.save(folder);
+        return com.After_Buy.DeviceService.dto.response.FolderCreateResponse.from(savedFolder);
+    }
 }
+
 

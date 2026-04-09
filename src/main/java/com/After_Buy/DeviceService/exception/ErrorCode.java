@@ -19,7 +19,7 @@ public enum ErrorCode {
 
 	/* ===== 기기 관련 (DEVICE-0XX) ===== */
 
-	/** 폴더가 존재하지 않거나 본인 소유가 아닌 경우 */
+	/** 폴더가 존재하지 않거나 본인 소유가 아닌 경우 (구버전 호환) */
 	DEVICE_FOLDER_NOT_FOUND(HttpStatus.NOT_FOUND, "DEVICE-001", "존재하지 않거나 접근 권한이 없는 폴더입니다."),
 
 	/** 본인의 기기가 아닌 경우 (403 Forbidden) */
@@ -27,6 +27,16 @@ public enum ErrorCode {
 
 	/** 기기가 존재하지 않는 경우 (404 Not Found) */
 	DEVICE_NOT_FOUND(HttpStatus.NOT_FOUND, "DEVICE-003", "존재하지 않는 기기입니다."),
+
+	/** 본인의 폴더가 아닌 경우 (403 Forbidden) */
+	FOLDER_ACCESS_DENIED(HttpStatus.FORBIDDEN, "DEVICE-004", "본인의 폴더에만 접근할 수 있습니다."),
+
+	/** 폴더 미존재 (404 Not Found) */
+	FOLDER_NOT_FOUND(HttpStatus.NOT_FOUND, "DEVICE-005", "존재하지 않는 폴더입니다."),
+
+	/** 부모 폴더 미존재 (404 Not Found) */
+	PARENT_FOLDER_NOT_FOUND(HttpStatus.NOT_FOUND, "DEVICE-005", "존재하지 않는 상위 폴더입니다."),
+
 
 	/* ===== 검색 대행 관련 (SEARCH-0XX) ===== */
 
