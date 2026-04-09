@@ -11,8 +11,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import com.After_Buy.DeviceService.dto.response.FolderItemsResponse;
+import com.After_Buy.DeviceService.dto.response.BreadcrumbDto;
+import com.After_Buy.DeviceService.dto.response.FolderCreateResponse;
+import com.After_Buy.DeviceService.dto.request.FolderCreateRequest;
+import com.After_Buy.DeviceService.dto.request.FolderUpdateNameRequest;
+import com.After_Buy.DeviceService.entity.Folder;
+import com.After_Buy.DeviceService.exception.CustomException;
+import com.After_Buy.DeviceService.exception.ErrorCode;
 
 /**
  * 폴더 비즈니스 로직 서비스
@@ -61,10 +71,15 @@ public class FolderService {
      * @return : FolderItemsResponse (현재 폴더 정보, 하위 폴더, 내부 기기, Breadcrumb 경로)
      */
     @Transactional(readOnly = true)
-    public com.After_Buy.DeviceService.dto.response.FolderItemsResponse getFolderItems(Long userId, Long folderId) {
-        // 1. 현재 폴더 가져오기 및 소유권 검증
-        com.After_Buy.DeviceService.entity.Folder currentFolder = folderRepository.findByFolderIdAndUserId(folderId, userId)
-                .orElseThrow(() -> new com.After_Buy.DeviceService.exception.CustomException(com.After_Buy.DeviceService.exception.ErrorCode.DEVICE_FOLDER_NOT_FOUND));
+    public FolderItemsResponse getFolderItems(Long userId, Long folderId) {
+        // 1. 현재 폴더 가져오기 (존재 확인 DEVICE-005)
+        Folder currentFolder = folderRepository.findById(folderId)
+                .orElseThrow(() -> new CustomException(ErrorCode.FOLDER_NOT_FOUND));
+
+        // 소유권 검증 (권한 접근 에러 DEVICE-004)
+        if (!currentFolder.getUserId().equals(userId)) {
+            throw new CustomException(ErrorCode.FOLDER_ACCESS_DENIED);
+        }
 
         // 2. 현재 폴더 DTO 매핑
         Long childCount = folderRepository.countByParentFolderId(folderId) + deviceRepository.countByFolderId(folderId);
@@ -78,10 +93,10 @@ public class FolderService {
                 .build();
 
         // 3. Breadcrumb 경로 생성 (현재 위치 위로 역추적)
-        java.util.List<com.After_Buy.DeviceService.dto.response.BreadcrumbDto> breadcrumb = new java.util.ArrayList<>();
-        com.After_Buy.DeviceService.entity.Folder temp = currentFolder;
+        List<BreadcrumbDto> breadcrumb = new ArrayList<>();
+        Folder temp = currentFolder;
         while (temp != null) {
-            breadcrumb.add(0, new com.After_Buy.DeviceService.dto.response.BreadcrumbDto(temp.getFolderId(), temp.getFolderName()));
+            breadcrumb.add(0, new BreadcrumbDto(temp.getFolderId(), temp.getFolderName()));
             if (temp.getParentFolderId() == null) {
                 break;
             }
@@ -97,7 +112,7 @@ public class FolderService {
                 .map(DeviceListItemDto::from)
                 .collect(Collectors.toList());
 
-        return com.After_Buy.DeviceService.dto.response.FolderItemsResponse.of(currentFolderDto, breadcrumb, subFolders, devices);
+        return FolderItemsResponse.of(currentFolderDto, breadcrumb, subFolders, devices);
     }
 
     /**
@@ -108,21 +123,21 @@ public class FolderService {
      * @param request : 바디로 넘겨받은 폴더 생성 요청 속성(이름, 부모 폴더 ID)
      * @return : 생성 완료된 폴더 객체 반환
      */
-    @org.springframework.transaction.annotation.Transactional
-    public com.After_Buy.DeviceService.dto.response.FolderCreateResponse createFolder(Long userId, com.After_Buy.DeviceService.dto.request.FolderCreateRequest request) {
+    @Transactional
+    public FolderCreateResponse createFolder(Long userId, FolderCreateRequest request) {
         if (request.getParentFolderId() != null) {
             folderRepository.findByFolderIdAndUserId(request.getParentFolderId(), userId)
-                    .orElseThrow(() -> new com.After_Buy.DeviceService.exception.CustomException(com.After_Buy.DeviceService.exception.ErrorCode.PARENT_FOLDER_NOT_FOUND));
+                    .orElseThrow(() -> new CustomException(ErrorCode.PARENT_FOLDER_NOT_FOUND));
         }
 
-        com.After_Buy.DeviceService.entity.Folder folder = com.After_Buy.DeviceService.entity.Folder.builder()
+        Folder folder = Folder.builder()
                 .userId(userId)
                 .folderName(request.getFolderName())
                 .parentFolderId(request.getParentFolderId())
                 .build();
 
-        com.After_Buy.DeviceService.entity.Folder savedFolder = folderRepository.save(folder);
-        return com.After_Buy.DeviceService.dto.response.FolderCreateResponse.from(savedFolder);
+        Folder savedFolder = folderRepository.save(folder);
+        return FolderCreateResponse.from(savedFolder);
     }
 
     /**
@@ -134,21 +149,21 @@ public class FolderService {
      * @param request  : 변경할 새로운 이름 정보
      * @return : 수정된 폴더의 응답용 DTO
      */
-    @org.springframework.transaction.annotation.Transactional
-    public com.After_Buy.DeviceService.dto.response.FolderCreateResponse updateFolderName(Long userId, Long folderId, com.After_Buy.DeviceService.dto.request.FolderUpdateNameRequest request) {
+    @Transactional
+    public FolderCreateResponse updateFolderName(Long userId, Long folderId, FolderUpdateNameRequest request) {
         // 1. 존재 여부 점검 (DEVICE-005)
-        com.After_Buy.DeviceService.entity.Folder folder = folderRepository.findById(folderId)
-                .orElseThrow(() -> new com.After_Buy.DeviceService.exception.CustomException(com.After_Buy.DeviceService.exception.ErrorCode.FOLDER_NOT_FOUND));
+        Folder folder = folderRepository.findById(folderId)
+                .orElseThrow(() -> new CustomException(ErrorCode.FOLDER_NOT_FOUND));
 
         // 2. 소유권 점검 (DEVICE-004)
         if (!folder.getUserId().equals(userId)) {
-            throw new com.After_Buy.DeviceService.exception.CustomException(com.After_Buy.DeviceService.exception.ErrorCode.FOLDER_ACCESS_DENIED);
+            throw new CustomException(ErrorCode.FOLDER_ACCESS_DENIED);
         }
 
         // 3. 엔티티 상태 변경 (스프링 더티체킹)
         folder.updateFolderName(request.getFolderName());
         
-        return com.After_Buy.DeviceService.dto.response.FolderCreateResponse.from(folder);
+        return FolderCreateResponse.from(folder);
     }
 
     /**
@@ -159,15 +174,15 @@ public class FolderService {
      * @param userId   : 삭제 요청 유저 ID
      * @param folderId : 삭제 대상 폴더 ID
      */
-    @org.springframework.transaction.annotation.Transactional
+    @Transactional
     public void deleteFolder(Long userId, Long folderId) {
         // 1. 존재 여부 점검 (DEVICE-005)
-        com.After_Buy.DeviceService.entity.Folder folder = folderRepository.findById(folderId)
-                .orElseThrow(() -> new com.After_Buy.DeviceService.exception.CustomException(com.After_Buy.DeviceService.exception.ErrorCode.FOLDER_NOT_FOUND));
+        Folder folder = folderRepository.findById(folderId)
+                .orElseThrow(() -> new CustomException(ErrorCode.FOLDER_NOT_FOUND));
 
         // 2. 소유권 점검 (DEVICE-004)
         if (!folder.getUserId().equals(userId)) {
-            throw new com.After_Buy.DeviceService.exception.CustomException(com.After_Buy.DeviceService.exception.ErrorCode.FOLDER_ACCESS_DENIED);
+            throw new CustomException(ErrorCode.FOLDER_ACCESS_DENIED);
         }
 
         // 3. 애플리케이션 레벨 CASCADE: 하위 기기 및 폴더 재귀 삭제 진행

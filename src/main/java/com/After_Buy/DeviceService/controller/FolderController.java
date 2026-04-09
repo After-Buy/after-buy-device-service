@@ -13,6 +13,18 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.http.HttpStatus;
+import jakarta.validation.Valid;
+
+import com.After_Buy.DeviceService.dto.request.FolderCreateRequest;
+import com.After_Buy.DeviceService.dto.request.FolderUpdateNameRequest;
+import com.After_Buy.DeviceService.dto.response.FolderCreateResponse;
+import com.After_Buy.DeviceService.dto.response.FolderItemsResponse;
 
 /**
  * 폴더 관리 컨트롤러
@@ -66,11 +78,11 @@ public class FolderController {
      */
     @Operation(summary = "특정 폴더 내용 조회", description = "특정 폴더 내의 직속 하위 폴더, 소속 기기 목록 및 Breadcrumb 경로를 반환합니다.")
     @GetMapping("/{folder_id}/items")
-    public ResponseEntity<ApiResponse<com.After_Buy.DeviceService.dto.response.FolderItemsResponse>> getFolderItems(
+    public ResponseEntity<ApiResponse<FolderItemsResponse>> getFolderItems(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
-            @org.springframework.web.bind.annotation.PathVariable("folder_id") Long folderId) {
+            @PathVariable("folder_id") Long folderId) {
         log.info("특정 폴더 내용 조회 요청: userId={}, folderId={}", userPrincipal.getUserId(), folderId);
-        com.After_Buy.DeviceService.dto.response.FolderItemsResponse response = folderService.getFolderItems(userPrincipal.getUserId(), folderId);
+        FolderItemsResponse response = folderService.getFolderItems(userPrincipal.getUserId(), folderId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -85,16 +97,16 @@ public class FolderController {
      * @author : 최준혁
      */
     @Operation(summary = "폴더 생성", description = "새로운 기기 분류용 폴더를 생성합니다.")
-    @org.springframework.web.bind.annotation.PostMapping
-    public ResponseEntity<ApiResponse<com.After_Buy.DeviceService.dto.response.FolderCreateResponse>> createFolder(
+    @PostMapping
+    public ResponseEntity<ApiResponse<FolderCreateResponse>> createFolder(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
-            @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody com.After_Buy.DeviceService.dto.request.FolderCreateRequest request) {
+            @Valid @RequestBody FolderCreateRequest request) {
         log.info("폴더 생성 요청: userId={}, folderName={}, parentId={}",
                  userPrincipal.getUserId(), request.getFolderName(), request.getParentFolderId());
 
-        com.After_Buy.DeviceService.dto.response.FolderCreateResponse response = folderService.createFolder(userPrincipal.getUserId(), request);
+        FolderCreateResponse response = folderService.createFolder(userPrincipal.getUserId(), request);
 
-        return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
+        return ResponseEntity.status(HttpStatus.CREATED)
                              .body(ApiResponse.success(response));
     }
 
@@ -111,14 +123,14 @@ public class FolderController {
      * @author : 최준혁
      */
     @Operation(summary = "폴더명 수정", description = "지정된 특정 폴더의 이름을 변경합니다.")
-    @org.springframework.web.bind.annotation.PatchMapping("/{folder_id}")
-    public ResponseEntity<ApiResponse<com.After_Buy.DeviceService.dto.response.FolderCreateResponse>> updateFolderName(
+    @PatchMapping("/{folder_id}")
+    public ResponseEntity<ApiResponse<FolderCreateResponse>> updateFolderName(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
-            @org.springframework.web.bind.annotation.PathVariable("folder_id") Long folderId,
-            @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody com.After_Buy.DeviceService.dto.request.FolderUpdateNameRequest request) {
+            @PathVariable("folder_id") Long folderId,
+            @Valid @RequestBody FolderUpdateNameRequest request) {
         log.info("폴더명 수정 요청: userId={}, folderId={}, newName={}", userPrincipal.getUserId(), folderId, request.getFolderName());
         
-        com.After_Buy.DeviceService.dto.response.FolderCreateResponse response = folderService.updateFolderName(userPrincipal.getUserId(), folderId, request);
+        FolderCreateResponse response = folderService.updateFolderName(userPrincipal.getUserId(), folderId, request);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -134,10 +146,10 @@ public class FolderController {
      * @author : 최준혁
      */
     @Operation(summary = "폴더 삭제", description = "명시된 폴더와 해당 폴더 내부의 모든 하위 폴더/기기들을 연쇄 삭제합니다.")
-    @org.springframework.web.bind.annotation.DeleteMapping("/{folder_id}")
+    @DeleteMapping("/{folder_id}")
     public ResponseEntity<ApiResponse<Void>> deleteFolder(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
-            @org.springframework.web.bind.annotation.PathVariable("folder_id") Long folderId) {
+            @PathVariable("folder_id") Long folderId) {
         log.info("폴더 삭제 요청: userId={}, folderId={}", userPrincipal.getUserId(), folderId);
         
         folderService.deleteFolder(userPrincipal.getUserId(), folderId);
