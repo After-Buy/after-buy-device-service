@@ -68,5 +68,13 @@ public interface FolderRepository extends JpaRepository<Folder, Long> {
 	 * 특정 부모를 가지는 직속 자식 폴더의 개수 계산
 	 */
 	Long countByParentFolderId(Long parentFolderId);
+
+	/**
+	 * 특정 부모의 직속 자식들의 ID 목록만 조회 (재귀 삭제용)
+	 * @param parentFolderId : 부모 폴더 ID
+	 * @return : 하위 폴더 ID 리스트
+	 */
+	@Query("SELECT f.folderId FROM Folder f WHERE f.parentFolderId = :parentFolderId")
+	List<Long> findFolderIdsByParentFolderId(@Param("parentFolderId") Long parentFolderId);
 }
 

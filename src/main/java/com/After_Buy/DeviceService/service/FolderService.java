@@ -153,8 +153,8 @@ public class FolderService {
 
     /**
      * 폴더 삭제 로직
-     * 물리적 DB 설계에 따른 (ON DELETE CASCADE) 기능으로 인해 하위 폴더와 기기들이 자동 삭제됩니다.
-     * 따라서 이 메서드에서는 폴더의 존재 및 권한 인증 후 부모만 삭제 처리합니다.
+     * DB의 ON DELETE CASCADE가 없을 경우(ddl-auto: update 환경 등)를 대비하여,
+     * 애플리케이션 레벨에서 하위 폴더 및 기기들을 재귀적으로 먼저 삭제한 뒤 부모를 삭제합니다.
      *
      * @param userId   : 삭제 요청 유저 ID
      * @param folderId : 삭제 대상 폴더 ID
@@ -170,10 +170,31 @@ public class FolderService {
             throw new com.After_Buy.DeviceService.exception.CustomException(com.After_Buy.DeviceService.exception.ErrorCode.FOLDER_ACCESS_DENIED);
         }
 
-        // 3. 부모 폴더 삭제 수행 (DB FK 연쇄 삭제 트리거 작동)
+        // 3. 애플리케이션 레벨 CASCADE: 하위 기기 및 폴더 재귀 삭제 진행
+        deleteSubFoldersAndDevicesRecursively(folderId);
+
+        // 4. 마지막으로 최상위 부모 요청 폴더 삭제
         folderRepository.delete(folder);
     }
+
+    /**
+     * 특정 폴더의 모든 하위 항목(기기 및 하위 폴더)들을 DFS 방식으로 일괄 삭제합니다.
+     */
+    private void deleteSubFoldersAndDevicesRecursively(Long currentFolderId) {
+        // 현재 폴더에 속한 모든 내부 기기 삭제
+        deviceRepository.deleteByFolderId(currentFolderId);
+
+        // 직속 하위 폴더 ID 목록 추출
+        List<Long> subFolderIds = folderRepository.findFolderIdsByParentFolderId(currentFolderId);
+
+        // 자식 폴더들의 자식을 먼저 지우고(재귀) 본인을 지우는 Bottom-Up 삭제 수행
+        for (Long subId : subFolderIds) {
+            deleteSubFoldersAndDevicesRecursively(subId);
+            folderRepository.deleteById(subId);
+        }
+    }
 }
+
 
 
 
