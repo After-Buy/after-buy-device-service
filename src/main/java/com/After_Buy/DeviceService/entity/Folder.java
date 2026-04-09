@@ -55,4 +55,14 @@ public class Folder {
 	@UpdateTimestamp
 	@Column(name = "updated_at", nullable = false)
 	private LocalDateTime updatedAt;
+
+	/**
+	 * 폴더 이름 변경 메서드
+	 *
+	 * @param folderName : 변경할 새로운 폴더 명
+	 */
+	public void updateFolderName(String folderName) {
+		this.folderName = folderName;
+	}
 }
+

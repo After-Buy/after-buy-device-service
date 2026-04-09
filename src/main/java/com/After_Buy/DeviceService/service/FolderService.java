@@ -124,6 +124,33 @@ public class FolderService {
         com.After_Buy.DeviceService.entity.Folder savedFolder = folderRepository.save(folder);
         return com.After_Buy.DeviceService.dto.response.FolderCreateResponse.from(savedFolder);
     }
+
+    /**
+     * 폴더 이름 수정 로직
+     * 폴더의 존재 유무(404) 및 사용자의 소유 권한(403)을 각각 분리하여 검증 후 이름을 변경합니다.
+     *
+     * @param userId   : 폴더를 수정하려는 유저 고유 ID
+     * @param folderId : 수정 대상 폴더 ID
+     * @param request  : 변경할 새로운 이름 정보
+     * @return : 수정된 폴더의 응답용 DTO
+     */
+    @org.springframework.transaction.annotation.Transactional
+    public com.After_Buy.DeviceService.dto.response.FolderCreateResponse updateFolderName(Long userId, Long folderId, com.After_Buy.DeviceService.dto.request.FolderUpdateNameRequest request) {
+        // 1. 존재 여부 점검 (DEVICE-005)
+        com.After_Buy.DeviceService.entity.Folder folder = folderRepository.findById(folderId)
+                .orElseThrow(() -> new com.After_Buy.DeviceService.exception.CustomException(com.After_Buy.DeviceService.exception.ErrorCode.FOLDER_NOT_FOUND));
+
+        // 2. 소유권 점검 (DEVICE-004)
+        if (!folder.getUserId().equals(userId)) {
+            throw new com.After_Buy.DeviceService.exception.CustomException(com.After_Buy.DeviceService.exception.ErrorCode.FOLDER_ACCESS_DENIED);
+        }
+
+        // 3. 엔티티 상태 변경 (스프링 더티체킹)
+        folder.updateFolderName(request.getFolderName());
+        
+        return com.After_Buy.DeviceService.dto.response.FolderCreateResponse.from(folder);
+    }
 }
+
 
 

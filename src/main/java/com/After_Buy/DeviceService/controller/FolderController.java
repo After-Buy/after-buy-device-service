@@ -97,6 +97,31 @@ public class FolderController {
         return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
                              .body(ApiResponse.success(response));
     }
+
+    /**
+     * 폴더명 수정 API
+     * 기존에 생성된 특정 폴더의 이름을 변경합니다.
+     * 본인 소유의 폴더만 수정 가능합니다.
+     *
+     * @param userPrincipal : 인증된 사용자
+     * @param folderId      : 이름을 수정할 폴더 ID
+     * @param request       : 새로운 폴더명 객체
+     * @return : 200 OK + 수정 완료된 폴더 데이터
+     * @since : 2026.04.09
+     * @author : 최준혁
+     */
+    @Operation(summary = "폴더명 수정", description = "지정된 특정 폴더의 이름을 변경합니다.")
+    @org.springframework.web.bind.annotation.PatchMapping("/{folder_id}")
+    public ResponseEntity<ApiResponse<com.After_Buy.DeviceService.dto.response.FolderCreateResponse>> updateFolderName(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @org.springframework.web.bind.annotation.PathVariable("folder_id") Long folderId,
+            @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody com.After_Buy.DeviceService.dto.request.FolderUpdateNameRequest request) {
+        log.info("폴더명 수정 요청: userId={}, folderId={}, newName={}", userPrincipal.getUserId(), folderId, request.getFolderName());
+        
+        com.After_Buy.DeviceService.dto.response.FolderCreateResponse response = folderService.updateFolderName(userPrincipal.getUserId(), folderId, request);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
 }
+
 
 
