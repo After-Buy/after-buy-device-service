@@ -47,4 +47,26 @@ public interface FolderRepository extends JpaRepository<Folder, Long> {
 			"ORDER BY f.createdAt DESC")
 	List<FolderDto> findRootFoldersWithChildCount(@Param("userId") Long userId);
 
+	/**
+	 * 특정 폴더 내부의 직속 하위 폴더 목록 조회 및 각각의 하위 개수 계산
+	 * 
+	 * @param parentFolderId : 조회할 부모 폴더 ID
+	 * @param userId : 권한 검증용 소유자 ID
+	 * @return : 하위 폴더 목록 (각 내부 항목 개수 포함)
+	 */
+	@Query("SELECT new com.After_Buy.DeviceService.dto.response.FolderDto(" +
+			"f.folderId, f.folderName, f.parentFolderId, " +
+			"(COALESCE((SELECT COUNT(subF) FROM Folder subF WHERE subF.parentFolderId = f.folderId), 0L) + " +
+			"COALESCE((SELECT COUNT(d) FROM Device d WHERE d.folderId = f.folderId), 0L)), " +
+			"f.createdAt, f.updatedAt) " +
+			"FROM Folder f " +
+			"WHERE f.userId = :userId AND f.parentFolderId = :parentFolderId " +
+			"ORDER BY f.createdAt DESC")
+	List<FolderDto> findSubFoldersWithChildCount(@Param("parentFolderId") Long parentFolderId, @Param("userId") Long userId);
+
+	/**
+	 * 특정 부모를 가지는 직속 자식 폴더의 개수 계산
+	 */
+	Long countByParentFolderId(Long parentFolderId);
 }
+

@@ -52,4 +52,52 @@ public class FolderService {
 
         return RootFolderListResponse.of(rootFolders, unclassifiedDevices);
     }
+
+    /**
+     * 특정 폴더 내부 아이템 목록 조회 및 Breadcrumb 생성
+     *
+     * @param userId   : 조회 요청을 한 사용자 ID
+     * @param folderId : 현재 진입한 폴더 ID
+     * @return : FolderItemsResponse (현재 폴더 정보, 하위 폴더, 내부 기기, Breadcrumb 경로)
+     */
+    @Transactional(readOnly = true)
+    public com.After_Buy.DeviceService.dto.response.FolderItemsResponse getFolderItems(Long userId, Long folderId) {
+        // 1. 현재 폴더 가져오기 및 소유권 검증
+        com.After_Buy.DeviceService.entity.Folder currentFolder = folderRepository.findByFolderIdAndUserId(folderId, userId)
+                .orElseThrow(() -> new com.After_Buy.DeviceService.exception.CustomException(com.After_Buy.DeviceService.exception.ErrorCode.DEVICE_FOLDER_NOT_FOUND));
+
+        // 2. 현재 폴더 DTO 매핑
+        Long childCount = folderRepository.countByParentFolderId(folderId) + deviceRepository.countByFolderId(folderId);
+        FolderDto currentFolderDto = FolderDto.builder()
+                .folderId(currentFolder.getFolderId())
+                .folderName(currentFolder.getFolderName())
+                .parentFolderId(currentFolder.getParentFolderId())
+                .childCount(childCount)
+                .createdAt(currentFolder.getCreatedAt())
+                .updatedAt(currentFolder.getUpdatedAt())
+                .build();
+
+        // 3. Breadcrumb 경로 생성 (현재 위치 위로 역추적)
+        java.util.List<com.After_Buy.DeviceService.dto.response.BreadcrumbDto> breadcrumb = new java.util.ArrayList<>();
+        com.After_Buy.DeviceService.entity.Folder temp = currentFolder;
+        while (temp != null) {
+            breadcrumb.add(0, new com.After_Buy.DeviceService.dto.response.BreadcrumbDto(temp.getFolderId(), temp.getFolderName()));
+            if (temp.getParentFolderId() == null) {
+                break;
+            }
+            temp = folderRepository.findById(temp.getParentFolderId()).orElse(null);
+        }
+
+        // 4. 직속 하위 폴더 목록 조회 (각 child_count 포함)
+        List<FolderDto> subFolders = folderRepository.findSubFoldersWithChildCount(folderId, userId);
+
+        // 5. 현재 폴더에 소속된 기기 목록 반환
+        List<Device> deviceEntities = deviceRepository.findByUserIdAndFolderIdOrderByCreatedAtDesc(userId, folderId);
+        List<DeviceListItemDto> devices = deviceEntities.stream()
+                .map(DeviceListItemDto::from)
+                .collect(Collectors.toList());
+
+        return com.After_Buy.DeviceService.dto.response.FolderItemsResponse.of(currentFolderDto, breadcrumb, subFolders, devices);
+    }
 }
+

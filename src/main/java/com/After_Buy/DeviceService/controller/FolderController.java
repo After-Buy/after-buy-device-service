@@ -52,4 +52,26 @@ public class FolderController {
         RootFolderListResponse response = folderService.getRootFolders(userPrincipal.getUserId());
         return ResponseEntity.ok(ApiResponse.success(response));
     }
+
+    /**
+     * 특정 폴더 내부 항목 조회 API
+     * 현재 지정한 폴더 내부에 들어있는 하위 폴더들과 기기 목록을 가져옵니다.
+     * 추가적으로 좌측 상단 Breadcrumb 경로 출력을 위해 루트부터 역추적한 경로 배열도 포함합니다.
+     *
+     * @param userPrincipal : JWT 토큰에서 추출된 인증 사용자 정보
+     * @param folderId : 현재 진입한 폴더의 고유 식별자 ID
+     * @return : 200 OK + 내부 폴더, 기기 목록, Breadcrumb 데이터 등이 담긴 객체 리스폰스 (FolderItemsResponse)
+     * @since : 2026.04.09
+     * @author : 최준혁
+     */
+    @Operation(summary = "특정 폴더 내용 조회", description = "특정 폴더 내의 직속 하위 폴더, 소속 기기 목록 및 Breadcrumb 경로를 반환합니다.")
+    @GetMapping("/{folder_id}/items")
+    public ResponseEntity<ApiResponse<com.After_Buy.DeviceService.dto.response.FolderItemsResponse>> getFolderItems(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @org.springframework.web.bind.annotation.PathVariable("folder_id") Long folderId) {
+        log.info("특정 폴더 내용 조회 요청: userId={}, folderId={}", userPrincipal.getUserId(), folderId);
+        com.After_Buy.DeviceService.dto.response.FolderItemsResponse response = folderService.getFolderItems(userPrincipal.getUserId(), folderId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
 }
+
