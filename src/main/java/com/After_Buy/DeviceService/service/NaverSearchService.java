@@ -93,8 +93,15 @@ public class NaverSearchService {
          * - 모델 코드 제거, 판매 수식어 제거, 브랜드 정규화 등
          * - 저장 용량(256GB 등)은 유지
          * - modelName은 이 단계에서 절대 수정하지 않음
+         * - Gemini가 전자기기가 아님으로 판단(케이스, 액세서리 등)하면 null 반환 → 검색 실패 처리
          */
         String[] refined = geminiParsingService.refine(cleanTitle, rawBrand);
+
+        if (refined == null) {
+            log.warn("[NaverSearchService] Gemini가 전자기기 아님으로 판별. 검색 결과 거부. (조회된 상품: {})", cleanTitle);
+            throw new CustomException(ErrorCode.SEARCH_NO_RESULT);
+        }
+
         String refinedProductName = refined[0];
         String refinedBrand = refined[1];
 

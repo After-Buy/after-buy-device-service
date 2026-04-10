@@ -7,7 +7,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import reactor.util.retry.Retry;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -77,6 +80,22 @@ public class GeminiParsingService {
                                             new RuntimeException("Gemini HTTP 오류 " + clientResponse.statusCode().value()
                                                     + ": " + errorBody))))
                     .bodyToMono(String.class)
+                    /* 10초 타임아웃: Gemini 응답이 지연될 경우 빠르게 포기하고 fallback 처리 */
+                    .timeout(Duration.ofSeconds(10))
+                    /*
+                     * 503(Service Unavailable) 발생 시 최대 2회 재시도 (Exponential Backoff)
+                     * - 1차 재시도: 1초 후
+                     * - 2차 재시도: 2초 후
+                     * - 429(Rate Limit)나 4xx는 재시도하지 않음 (의미 없음)
+                     */
+                    .retryWhen(Retry.backoff(2, Duration.ofSeconds(1))
+                            .filter(throwable -> throwable instanceof WebClientResponseException.ServiceUnavailable
+                                    || (throwable instanceof RuntimeException
+                                        && throwable.getMessage() != null
+                                        && throwable.getMessage().contains("503")))
+                            .doBeforeRetry(signal -> log.warn(
+                                    "[GeminiParsingService] Gemini 503 재시도 중... ({}/2회)",
+                                    signal.totalRetries() + 1)))
                     .block();
 
             return parseGeminiResponse(responseBody, rawProductName, rawBrand);
@@ -90,7 +109,8 @@ public class GeminiParsingService {
 
     /**
      * Gemini 프롬프트 생성 메서드
-     * 제품명에서 모델 코드 제거, 용량 정보(256GB 등) 유지, 브랜드 정규화 지시를 담습니다.
+     * 전자기기 여부를 먼저 판별하고, 전자기기일 때만 제품명·브랜드를 정제합니다.
+     * 케이스, 필름, 충전기 등 액세서리로 판단되면 null을 반환하도록 지시합니다.
      *
      * @param rawProductName : 원본 제품명
      * @param rawBrand       : 원본 브랜드명
@@ -99,18 +119,23 @@ public class GeminiParsingService {
      * @author : 최준혁
      */
     private String buildPrompt(String rawProductName, String rawBrand) {
-        return "다음 네이버 쇼핑 검색 결과의 제품명과 브랜드를 아래 규칙에 따라 정제해줘.\n\n" +
-                "규칙:\n" +
-                "1. 제품명에서 모델 코드(예: SM-S928N, MKGP3KH/A, MU7N3LL/A 등 알파벳+숫자 조합)는 제거\n" +
-                "2. 256GB, 512GB, 1TB 등 저장 용량 정보는 반드시 유지\n" +
-                "3. '정품', '공식', '자급제' 등 불필요한 판매 수식어는 제거\n" +
-                "4. 제품명 앞에 브랜드명이 중복되어 있으면 제거\n" +
-                "5. 브랜드는 대표 브랜드명으로 정리 (예: '삼성전자' → '삼성', 'LG전자' → 'LG')\n" +
-                "6. 반드시 아래 JSON 형식으로만 응답 (설명, 마크다운 코드블록 없이 순수 JSON만):\n" +
-                "{\"product_name\": \"정제된 제품명\", \"brand\": \"정제된 브랜드\"}\n\n" +
-                "입력:\n" +
-                "제품명: " + rawProductName + "\n" +
-                "브랜드: " + rawBrand;
+        return "아래 네이버 쇼핑 검색 결과가 \"\uc804자기기\"인지 먼저 판별해줘.\n\n" +
+               "판별 기준:\n" +
+               "- 전자기기(O): 스마트폰, 노트북, 태블릿, 이어폰, 헤드폰, 스마트워치, TV, 모니터, 카메라, 게임기, 전자체 등 가전제품 본체\n" +
+               "- 전자기기(아님): 케이스, 보호필름, 충전기, 케이블, 거치대, 가방, 파우치, 액세서리, 스티커, 청소용품 등\n\n" +
+               "전자기기가 아닌 경우 (케이스, 액세서리 등):\n" +
+               "{\"product_name\": null, \"brand\": null}\n\n" +
+               "전자기기인 경우 아래 규칙에 따라 정제해줘:\n" +
+               "1. 제품명에서 모델 코드(예: SM-S928N, MKGP3KH/A 등 알파벳+숫자 조합)는 제거\n" +
+               "2. 256GB, 512GB, 1TB 등 저장 용량 정보는 반드시 유지\n" +
+               "3. '정품', '공식', '자급제' 등 판매 수식어는 제거\n" +
+               "4. 제품명 앞에 브랜드명이 중복되어 있으면 제거\n" +
+               "5. 브랜드는 대표 브랜드명으로 정리 ('삼성전자' → '삼성', 'LG전자' → 'LG')\n\n" +
+               "반드시 순수 JSON만 응답 (설명, 마크다운 코드블록 없이):\n" +
+               "{\"product_name\": \"정제된 제품명\", \"brand\": \"정제된 브랜드\"}\n\n" +
+               "입력:\n" +
+               "제품명: " + rawProductName + "\n" +
+               "브랜드: " + rawBrand;
     }
 
     /**
@@ -136,12 +161,13 @@ public class GeminiParsingService {
     /**
      * Gemini 응답 파싱 메서드
      * candidates[0].content.parts[0].text 에서 JSON을 추출하여 정제된 값을 반환합니다.
+     * Gemini가 전자기기가 아님으로 판별(케이스 등)시 null을 반환합니다.
      * 파싱 실패 시 원본 값을 반환합니다.
      *
      * @param responseBody   : Gemini API 원본 응답 JSON 문자열
      * @param rawProductName : 파싱 실패 시 fallback으로 반환할 원본 제품명
      * @param rawBrand       : 파싱 실패 시 fallback으로 반환할 원본 브랜드명
-     * @return : [정제된 제품명, 정제된 브랜드명]
+     * @return : [정제된 제품명, 정제된 브랜드명] 또는 null (전자기기 아님으로 판단시)
      * @since : 2026.04.11
      * @author : 최준혁
      */
@@ -164,7 +190,15 @@ public class GeminiParsingService {
             }
 
             JsonNode parsedResult = objectMapper.readTree(cleanedText);
-            String refinedProductName = parsedResult.path("product_name").asText(rawProductName);
+
+            /* Gemini가 전자기기가 아님으로 판단한 경우: product_name이 null 또는 비어있음 */
+            JsonNode productNameNode = parsedResult.path("product_name");
+            if (productNameNode.isNull() || productNameNode.isMissingNode()) {
+                log.warn("[GeminiParsingService] 전자기기가 아님으로 판단 - 검색 실패 처리. 원본 제품명: '{}'", rawProductName);
+                return null;
+            }
+
+            String refinedProductName = productNameNode.asText(rawProductName);
             String refinedBrand = parsedResult.path("brand").asText(rawBrand);
 
             log.info("[GeminiParsingService] 정제 완료 - 제품명: '{}' → '{}', 브랜드: '{}' → '{}'",
