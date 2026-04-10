@@ -53,6 +53,6 @@ naver:
   client-id: ${NAVER_CLIENT_ID}
   client-secret: ${NAVER_CLIENT_SECRET}
 
-# Google Gemini API 연동 정보 (.env 매핑)
-gemini:
-  api-key: ${GEMINI_API_KEY}
+# Google Cloud Vertex AI Gemini 연동 설정 (.env 매핑)
+vertex:
+  api-key: ${VERTEX_API_KEY}

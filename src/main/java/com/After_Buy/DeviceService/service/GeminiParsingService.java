@@ -14,6 +14,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
+
 /**
  * Gemini API 연동을 통한 네이버 쇼핑 결과 정제 서비스
  * 네이버 쇼핑 API 원본 응답(제품명, 브랜드)을 Gemini LLM에게 전달하여
@@ -32,19 +33,18 @@ public class GeminiParsingService {
     private final String apiKey;
     private final ObjectMapper objectMapper;
 
-    /* Gemini 2.5 Flash Lite 모델 REST API 엔드포인트
-     * - 공식 문서 기준 현재 사용 가능한 가장 빠르고 저렴한 안정(Stable) 모델
-     * - 단순 분류/정제 태스크에 최적, 처리량이 높아 503 발생 가능성이 낮음 */
-    private static final String GEMINI_BASE_URL = "https://generativelanguage.googleapis.com";
-    private static final String GEMINI_PATH = "/v1beta/models/gemini-2.5-flash-lite:generateContent";
+    /* Google Cloud Vertex AI Gemini 엔드포인트 */
+    private static final String VERTEX_GEMINI_BASE_URL = "https://aiplatform.googleapis.com";
+    private static final String VERTEX_GEMINI_PATH = "/v1/publishers/google/models/gemini-2.5-flash-lite:generateContent";
 
     public GeminiParsingService(
             WebClient.Builder webClientBuilder,
-            @Value("${gemini.api-key}") String apiKey) {
-        this.webClient = webClientBuilder.baseUrl(GEMINI_BASE_URL).build();
+            @Value("${vertex.api-key}") String apiKey) {
+        this.webClient = webClientBuilder.baseUrl(VERTEX_GEMINI_BASE_URL).build();
         this.apiKey = apiKey;
         this.objectMapper = new ObjectMapper();
     }
+
 
     /**
      * 네이버 쇼핑 검색 결과 제품명·브랜드 정제 메서드
@@ -65,7 +65,7 @@ public class GeminiParsingService {
 
             String responseBody = webClient.post()
                     .uri(uriBuilder -> uriBuilder
-                            .path(GEMINI_PATH)
+                            .path(VERTEX_GEMINI_PATH)
                             .queryParam("key", apiKey)
                             .build())
                     .contentType(MediaType.APPLICATION_JSON)
@@ -159,10 +159,15 @@ public class GeminiParsingService {
             Map<String, Object> requestMap = Map.of(
                     /* 역할/규칙 모듈: 시스템 인스트럭션으로 분리 */
                     "system_instruction", Map.of(
+                            "role", "system",
                             "parts", List.of(Map.of("text", buildSystemInstruction()))),
                     /* 데이터 모듈: 유저 프롬프트는 데이터만 */
                     "contents", List.of(
-                            Map.of("parts", List.of(Map.of("text", userPrompt)))),
+                            Map.of(
+                                    "role", "user",
+                                    "parts", List.of(Map.of("text", userPrompt))
+                            )
+                    ),
                     /* JSON 응답 강제: 프롬프트에 'JSON으로 답해줘' 구문 보담 안해도 됨 */
                     "generationConfig", Map.of(
                             "response_mime_type", "application/json")
