@@ -52,3 +52,7 @@ jwt:
 naver:
   client-id: ${NAVER_CLIENT_ID}
   client-secret: ${NAVER_CLIENT_SECRET}
+
+# Google Cloud Vertex AI Gemini 연동 설정 (.env 매핑)
+vertex:
+  api-key: ${VERTEX_API_KEY}

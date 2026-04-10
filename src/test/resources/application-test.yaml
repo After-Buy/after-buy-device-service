@@ -26,3 +26,6 @@ internal:
 naver:
   client-id: "test-client-id"
   client-secret: "test-client-secret"
+
+vertex:
+  api-key: "test-vertex-api-key"
