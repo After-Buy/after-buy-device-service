@@ -22,6 +22,9 @@ import com.After_Buy.DeviceService.dto.request.FolderCreateRequest;
 import com.After_Buy.DeviceService.dto.request.FolderUpdateNameRequest;
 import com.After_Buy.DeviceService.dto.request.BulkMoveRequest;
 import com.After_Buy.DeviceService.dto.request.BulkDeleteRequest;
+import com.After_Buy.DeviceService.dto.response.SearchResponse;
+import com.After_Buy.DeviceService.dto.response.SearchFolderResultDto;
+import com.After_Buy.DeviceService.dto.response.SearchDeviceResultDto;
 import com.After_Buy.DeviceService.entity.Folder;
 import com.After_Buy.DeviceService.exception.CustomException;
 import com.After_Buy.DeviceService.exception.ErrorCode;
@@ -325,9 +328,54 @@ public class FolderService {
             }
         }
     }
+
+    /**
+     * 폴더 및 기기 통합 검색
+     * 검색어(keyword)로 폴더명, 상품명, 브랜드를 부분 문자열(LIKE) 방식으로 검색합니다.
+     * 검색어가 비어있으면 빈 결과를 반환합니다.
+     *
+     * @param userId  : 조회를 요청하는 사용자 ID
+     * @param keyword : 검색어 (빈 문자열이면 빈 결과 반환)
+     * @return : 폴더 검색 결과 + 기기 검색 결과를 담은 SearchResponse
+     * @since : 2026.04.10
+     * @author : 최준혁
+     */
+    @Transactional(readOnly = true)
+    public SearchResponse search(Long userId, String keyword) {
+
+        /* 검색어가 null이거나 공백인 경우 빈 결과 반환 (방안 B 적용) */
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return new SearchResponse(new ArrayList<>(), new ArrayList<>());
+        }
+
+        /* 1. 폴더명 검색 (대소문자 무시) */
+        List<Folder> matchedFolders = folderRepository.findByUserIdAndFolderNameContainingIgnoreCase(userId, keyword);
+        List<SearchFolderResultDto> folderResults = matchedFolders.stream()
+                .map(f -> new SearchFolderResultDto(f.getFolderId(), f.getFolderName(), "folder_name"))
+                .collect(Collectors.toList());
+
+        /* 2. 기기 상품명/브랜드 검색 */
+        List<Device> matchedDevices = deviceRepository.searchByUserIdAndKeyword(userId, keyword);
+        List<SearchDeviceResultDto> deviceResults = matchedDevices.stream()
+                .map(d -> {
+                    /* 미분류(folder_id = null)인 경우 folderName도 null 반환 */
+                    String folderName = null;
+                    if (d.getFolderId() != null) {
+                        folderName = folderRepository.findById(d.getFolderId())
+                                .map(Folder::getFolderName)
+                                .orElse(null);
+                    }
+                    return new SearchDeviceResultDto(
+                            d.getDeviceId(),
+                            d.getProductName(),
+                            d.getBrand(),
+                            d.getWarrantyExpiryDate(),
+                            d.getFolderId(),
+                            folderName
+                    );
+                })
+                .collect(Collectors.toList());
+
+        return new SearchResponse(folderResults, deviceResults);
+    }
 }
-
-
-
-
-
