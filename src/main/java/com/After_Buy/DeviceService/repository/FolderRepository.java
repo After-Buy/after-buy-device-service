@@ -76,5 +76,15 @@ public interface FolderRepository extends JpaRepository<Folder, Long> {
 	 */
 	@Query("SELECT f.folderId FROM Folder f WHERE f.parentFolderId = :parentFolderId")
 	List<Long> findFolderIdsByParentFolderId(@Param("parentFolderId") Long parentFolderId);
+
+	/**
+	 * 폴더명 키워드 부분 검색 (통합 검색용)
+	 * 사용자 소유 폴더 중 folderName에 keyword가 포함된 폴더를 반환합니다.
+	 *
+	 * @param userId  : 소유자 사용자 ID
+	 * @param keyword : 검색 키워드
+	 * @return : 매칭된 폴더 목록
+	 */
+	List<Folder> findByUserIdAndFolderNameContainingIgnoreCase(Long userId, String keyword);
 }
 

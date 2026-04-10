@@ -55,4 +55,18 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
     @org.springframework.data.jpa.repository.Modifying
     @org.springframework.data.jpa.repository.Query("DELETE FROM Device d WHERE d.folderId = :folderId")
     void deleteByFolderId(@org.springframework.data.repository.query.Param("folderId") Long folderId);
+
+    /**
+     * 상품명 또는 브랜드 키워드 부분 검색 (통합 검색용)
+     * 사용자 소유 기기 중 productName 또는 brand에 keyword가 포함된 기기를 반환합니다.
+     * JPQL LOWER()로 대소문자 무시 검색을 수행합니다.
+     *
+     * @param userId  : 소유자 사용자 ID
+     * @param keyword : 검색 키워드
+     * @return : 매칭된 기기 목록
+     */
+    @Query("SELECT d FROM Device d WHERE d.userId = :userId " +
+           "AND (LOWER(d.productName) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+           "OR LOWER(d.brand) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    List<Device> searchByUserIdAndKeyword(@Param("userId") Long userId, @Param("keyword") String keyword);
 }
