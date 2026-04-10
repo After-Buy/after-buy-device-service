@@ -26,14 +26,17 @@ public class NaverSearchService {
     private final WebClient webClient;
     private final String clientId;
     private final String clientSecret;
+    private final GeminiParsingService geminiParsingService;
 
     public NaverSearchService(
             WebClient.Builder webClientBuilder,
             @Value("${naver.client-id}") String clientId,
-            @Value("${naver.client-secret}") String clientSecret) {
+            @Value("${naver.client-secret}") String clientSecret,
+            GeminiParsingService geminiParsingService) {
         this.webClient = webClientBuilder.baseUrl("https://openapi.naver.com/v1/search").build();
         this.clientId = clientId;
         this.clientSecret = clientSecret;
+        this.geminiParsingService = geminiParsingService;
     }
 
     /**
@@ -80,10 +83,25 @@ public class NaverSearchService {
             throw new CustomException(ErrorCode.SEARCH_NO_RESULT);
         }
 
+        // 브랜드 원본 추출 (brand 없으면 maker 사용)
+        String rawBrand = item.getBrand() != null && !item.getBrand().isEmpty()
+                ? item.getBrand()
+                : item.getMaker();
+
+        /*
+         * Gemini LLM으로 제품명·브랜드 정제 수행
+         * - 모델 코드 제거, 판매 수식어 제거, 브랜드 정규화 등
+         * - 저장 용량(256GB 등)은 유지
+         * - modelName은 이 단계에서 절대 수정하지 않음
+         */
+        String[] refined = geminiParsingService.refine(cleanTitle, rawBrand);
+        String refinedProductName = refined[0];
+        String refinedBrand = refined[1];
+
         return NaverProductDto.builder()
-                .productName(cleanTitle)
+                .productName(refinedProductName)
                 .modelName(modelName)
-                .brand(item.getBrand() != null && !item.getBrand().isEmpty() ? item.getBrand() : item.getMaker())
+                .brand(refinedBrand)
                 .imageUrl(item.getImage())
                 .productLinkUrl(item.getLink())
                 .build();

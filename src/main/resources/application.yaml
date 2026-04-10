@@ -52,3 +52,7 @@ jwt:
 naver:
   client-id: ${NAVER_CLIENT_ID}
   client-secret: ${NAVER_CLIENT_SECRET}
+
+# Google Gemini API 연동 정보 (.env 매핑)
+gemini:
+  api-key: ${GEMINI_API_KEY}
