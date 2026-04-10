@@ -80,8 +80,6 @@ public class GeminiParsingService {
                                             new RuntimeException("Gemini HTTP 오류 " + clientResponse.statusCode().value()
                                                     + ": " + errorBody))))
                     .bodyToMono(String.class)
-                    /* 10초 타임아웃: Gemini 응답이 지연될 경우 빠르게 포기하고 fallback 처리 */
-                    .timeout(Duration.ofSeconds(10))
                     /*
                      * 503(Service Unavailable) 발생 시 최대 2회 재시도 (Exponential Backoff)
                      * - 1차 재시도: 1초 후
@@ -91,8 +89,8 @@ public class GeminiParsingService {
                     .retryWhen(Retry.backoff(2, Duration.ofSeconds(1))
                             .filter(throwable -> throwable instanceof WebClientResponseException.ServiceUnavailable
                                     || (throwable instanceof RuntimeException
-                                        && throwable.getMessage() != null
-                                        && throwable.getMessage().contains("503")))
+                                            && throwable.getMessage() != null
+                                            && throwable.getMessage().contains("503")))
                             .doBeforeRetry(signal -> log.warn(
                                     "[GeminiParsingService] Gemini 503 재시도 중... ({}/2회)",
                                     signal.totalRetries() + 1)))
@@ -120,22 +118,22 @@ public class GeminiParsingService {
      */
     private String buildPrompt(String rawProductName, String rawBrand) {
         return "아래 네이버 쇼핑 검색 결과가 \"\uc804자기기\"인지 먼저 판별해줘.\n\n" +
-               "판별 기준:\n" +
-               "- 전자기기(O): 스마트폰, 노트북, 태블릿, 이어폰, 헤드폰, 스마트워치, TV, 모니터, 카메라, 게임기, 전자체 등 가전제품 본체\n" +
-               "- 전자기기(아님): 케이스, 보호필름, 충전기, 케이블, 거치대, 가방, 파우치, 액세서리, 스티커, 청소용품 등\n\n" +
-               "전자기기가 아닌 경우 (케이스, 액세서리 등):\n" +
-               "{\"product_name\": null, \"brand\": null}\n\n" +
-               "전자기기인 경우 아래 규칙에 따라 정제해줘:\n" +
-               "1. 제품명에서 모델 코드(예: SM-S928N, MKGP3KH/A 등 알파벳+숫자 조합)는 제거\n" +
-               "2. 256GB, 512GB, 1TB 등 저장 용량 정보는 반드시 유지\n" +
-               "3. '정품', '공식', '자급제' 등 판매 수식어는 제거\n" +
-               "4. 제품명 앞에 브랜드명이 중복되어 있으면 제거\n" +
-               "5. 브랜드는 대표 브랜드명으로 정리 ('삼성전자' → '삼성', 'LG전자' → 'LG')\n\n" +
-               "반드시 순수 JSON만 응답 (설명, 마크다운 코드블록 없이):\n" +
-               "{\"product_name\": \"정제된 제품명\", \"brand\": \"정제된 브랜드\"}\n\n" +
-               "입력:\n" +
-               "제품명: " + rawProductName + "\n" +
-               "브랜드: " + rawBrand;
+                "판별 기준:\n" +
+                "- 전자기기(O): 스마트폰, 노트북, 태블릿, 이어폰, 헤드폰, 스마트워치, TV, 모니터, 카메라, 게임기, 전자체 등 가전제품 본체\n" +
+                "- 전자기기(아님): 케이스, 보호필름, 충전기, 케이블, 거치대, 가방, 파우치, 액세서리, 스티커, 청소용품 등\n\n" +
+                "전자기기가 아닌 경우 (케이스, 액세서리 등):\n" +
+                "{\"product_name\": null, \"brand\": null}\n\n" +
+                "전자기기인 경우 아래 규칙에 따라 정제해줘:\n" +
+                "1. 제품명에서 모델 코드(예: SM-S928N, MKGP3KH/A 등 알파벳+숫자 조합)는 제거\n" +
+                "2. 256GB, 512GB, 1TB 등 저장 용량 정보는 반드시 유지\n" +
+                "3. '정품', '공식', '자급제' 등 판매 수식어는 제거\n" +
+                "4. 제품명 앞에 브랜드명이 중복되어 있으면 제거\n" +
+                "5. 브랜드는 대표 브랜드명으로 정리 ('삼성전자' → '삼성', 'LG전자' → 'LG')\n\n" +
+                "반드시 순수 JSON만 응답 (설명, 마크다운 코드블록 없이):\n" +
+                "{\"product_name\": \"정제된 제품명\", \"brand\": \"정제된 브랜드\"}\n\n" +
+                "입력:\n" +
+                "제품명: " + rawProductName + "\n" +
+                "브랜드: " + rawBrand;
     }
 
     /**
