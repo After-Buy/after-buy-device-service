@@ -32,9 +32,11 @@ public class GeminiParsingService {
     private final String apiKey;
     private final ObjectMapper objectMapper;
 
-    /* Gemini 2.5 Flash 모델 REST API 엔드포인트 */
+    /* Gemini 2.5 Flash Lite 모델 REST API 엔드포인트
+     * - 공식 문서 기준 현재 사용 가능한 가장 빠르고 저렴한 안정(Stable) 모델
+     * - 단순 분류/정제 태스크에 최적, 처리량이 높아 503 발생 가능성이 낮음 */
     private static final String GEMINI_BASE_URL = "https://generativelanguage.googleapis.com";
-    private static final String GEMINI_PATH = "/v1beta/models/gemini-2.5-flash:generateContent";
+    private static final String GEMINI_PATH = "/v1beta/models/gemini-2.5-flash-lite:generateContent";
 
     public GeminiParsingService(
             WebClient.Builder webClientBuilder,
@@ -58,8 +60,8 @@ public class GeminiParsingService {
      */
     public String[] refine(String rawProductName, String rawBrand) {
         try {
-            String prompt = buildPrompt(rawProductName, rawBrand);
-            String requestBody = buildRequestBody(prompt);
+            String userPrompt = buildUserPrompt(rawProductName, rawBrand);
+            String requestBody = buildRequestBody(userPrompt);
 
             String responseBody = webClient.post()
                     .uri(uriBuilder -> uriBuilder
@@ -106,50 +108,65 @@ public class GeminiParsingService {
     }
 
     /**
-     * Gemini 프롬프트 생성 메서드
-     * 전자기기 여부를 먼저 판별하고, 전자기기일 때만 제품명·브랜드를 정제합니다.
-     * 케이스, 필름, 충전기 등 액세서리로 판단되면 null을 반환하도록 지시합니다.
+     * 시스템 인스트럭션 생성 메서드 (Gemini 역할/규칙 모듈)
+     * 프롬프트에서 분리하여 토큰 절감. 각 호출마다 반복 전송하지 않고 요청 구조에서 도구 역할을 담습니다.
+     * 전자기기 판별 기준과 정제 규칙을 포함합니다.
      *
-     * @param rawProductName : 원본 제품명
-     * @param rawBrand       : 원본 브랜드명
-     * @return : Gemini에 전달할 완성된 프롬프트 문자열
+     * @return : Gemini system_instruction 텍스트
      * @since : 2026.04.11
      * @author : 최준혁
      */
-    private String buildPrompt(String rawProductName, String rawBrand) {
-        return "아래 네이버 쇼핑 검색 결과가 \"\uc804자기기\"인지 먼저 판별해줘.\n\n" +
-                "판별 기준:\n" +
-                "- 전자기기(O): 스마트폰, 노트북, 태블릿, 이어폰, 헤드폰, 스마트워치, TV, 모니터, 카메라, 게임기, 전자체 등 가전제품 본체\n" +
-                "- 전자기기(아님): 케이스, 보호필름, 충전기, 케이블, 거치대, 가방, 파우치, 액세서리, 스티커, 청소용품 등\n\n" +
-                "전자기기가 아닌 경우 (케이스, 액세서리 등):\n" +
-                "{\"product_name\": null, \"brand\": null}\n\n" +
-                "전자기기인 경우 아래 규칙에 따라 정제해줘:\n" +
-                "1. 제품명에서 모델 코드(예: SM-S928N, MKGP3KH/A 등 알파벳+숫자 조합)는 제거\n" +
-                "2. 256GB, 512GB, 1TB 등 저장 용량 정보는 반드시 유지\n" +
-                "3. '정품', '공식', '자급제' 등 판매 수식어는 제거\n" +
-                "4. 제품명 앞에 브랜드명이 중복되어 있으면 제거\n" +
-                "5. 브랜드는 대표 브랜드명으로 정리 ('삼성전자' → '삼성', 'LG전자' → 'LG')\n\n" +
-                "반드시 순수 JSON만 응답 (설명, 마크다운 코드블록 없이):\n" +
-                "{\"product_name\": \"정제된 제품명\", \"brand\": \"정제된 브랜드\"}\n\n" +
-                "입력:\n" +
-                "제품명: " + rawProductName + "\n" +
-                "브랜드: " + rawBrand;
+    private String buildSystemInstruction() {
+        return "You are a Korean e-commerce product classifier. " +
+               "Given a product name and brand from Naver Shopping:\n" +
+               "1. Determine if it is a consumer ELECTRONICS DEVICE " +
+               "(smartphone, laptop, tablet, earphones, headphones, smartwatch, TV, monitor, camera, game console). " +
+               "NOT a case, film, charger, cable, stand, bag, or accessory.\n" +
+               "2. If NOT a device: output {\"product_name\":null,\"brand\":null}\n" +
+               "3. If a device: remove model codes (e.g. SM-S928N, MKGP3KH/A), " +
+               "remove storage capacity (256GB, 512GB, 1TB etc), remove sales words (정품/자급제/공식), " +
+               "remove brand prefix duplication, normalize brand (삼성전자→삼성, LG전자→LG).";
     }
 
     /**
-     * Gemini REST API 요청 본문(JSON) 생성 메서드
+     * 유저 프롬프트 생성 메서드 (모듈식 - 데이터만 전달)
+     * 시스템 인스트럭션에서 규칙을 정의하고, 이 프롬프트에는 비교 데이터만 담습니다.
+     * 토큰 사용량을 최소화합니다.
      *
-     * @param prompt : Gemini에게 전달할 프롬프트
+     * @param rawProductName : 원본 제품명
+     * @param rawBrand       : 원본 브랜드명
+     * @return : 데이터만 담은 최소 프롬프트
+     * @since : 2026.04.11
+     * @author : 최준혁
+     */
+    private String buildUserPrompt(String rawProductName, String rawBrand) {
+        return "Product: " + rawProductName + "\nBrand: " + rawBrand;
+    }
+
+    /**
+     * Gemini REST API 요청 본문(JSON) 생성 메서드 (모듈식 구조 적용)
+     * system_instruction에 역할/규칙을, contents에 데이터만 담아 토큰을 절감합니다.
+     * generationConfig.response_mime_type으로 JSON 응답을 강제하여
+     * 프롬프트에 'JSON으로 답해줘' 문구를 넣을 필요가 없습니다.
+     *
+     * @param userPrompt : 데이터만 담은 유저 프롬프트
      * @return : Gemini API 요청 JSON 문자열
      * @since : 2026.04.11
      * @author : 최준혁
      */
-    private String buildRequestBody(String prompt) {
+    private String buildRequestBody(String userPrompt) {
         try {
             Map<String, Object> requestMap = Map.of(
+                    /* 역할/규칙 모듈: 시스템 인스트럭션으로 분리 */
+                    "system_instruction", Map.of(
+                            "parts", List.of(Map.of("text", buildSystemInstruction()))),
+                    /* 데이터 모듈: 유저 프롬프트는 데이터만 */
                     "contents", List.of(
-                            Map.of("parts", List.of(
-                                    Map.of("text", prompt)))));
+                            Map.of("parts", List.of(Map.of("text", userPrompt)))),
+                    /* JSON 응답 강제: 프롬프트에 'JSON으로 답해줘' 구문 보담 안해도 됨 */
+                    "generationConfig", Map.of(
+                            "response_mime_type", "application/json")
+            );
             return objectMapper.writeValueAsString(requestMap);
         } catch (Exception e) {
             throw new RuntimeException("Gemini 요청 본문 생성 실패", e);
