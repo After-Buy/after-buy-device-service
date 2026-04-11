@@ -10,9 +10,12 @@ import com.After_Buy.DeviceService.dto.response.HomeSummaryResponse;
 import com.After_Buy.DeviceService.dto.response.DeviceListResponse;
 import com.After_Buy.DeviceService.dto.response.DeviceDetailResponse;
 import com.After_Buy.DeviceService.dto.response.DeviceNameUpdateResponse;
+import com.After_Buy.DeviceService.dto.request.PresignedUrlRequest;
+import com.After_Buy.DeviceService.dto.response.PresignedUrlResponse;
 import com.After_Buy.DeviceService.security.UserPrincipal;
 import com.After_Buy.DeviceService.service.DeviceService;
 import com.After_Buy.DeviceService.service.NaverSearchService;
+import com.After_Buy.DeviceService.service.S3Service;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -43,6 +46,7 @@ public class DeviceController {
 
 	private final DeviceService deviceService;
 	private final NaverSearchService naverSearchService;
+	private final S3Service s3Service;
 
 	/**
 	 * 홈 화면 요약 데이터 조회 API
@@ -211,5 +215,23 @@ public class DeviceController {
 		log.info("기기 삭제 요청: userId={}, deviceId={}", userPrincipal.getUserId(), deviceId);
 		deviceService.deleteDevice(userPrincipal.getUserId(), deviceId);
 		return ResponseEntity.ok(ApiResponse.successMessage("기기가 삭제되었습니다."));
+	}
+
+	/**
+	 * 기기 이미지 S3 직접 업로드용 Presigned URL 발급 API
+	 *
+	 * @param request : 이미지 확장자 정보
+	 * @return : 200 OK + Presigned URL 정보
+	 * @since : 2026.04.12
+	 * @author : 최준혁
+	 */
+	@Tag(name = "Image Upload", description = "이미지 업로드")
+	@Operation(summary = "S3 Pre-signed URL 발급 (기기 이미지 업로드 전용)", description = "S3에 직접 이미지를 업로드하기 위한 Presigned URL을 발급합니다.")
+	@PostMapping("/images/presigned-url")
+	public ResponseEntity<ApiResponse<PresignedUrlResponse>> generatePresignedUrl(
+			@Valid @RequestBody PresignedUrlRequest request) {
+		log.info("S3 Presigned URL 발급 요청: ext={}", request.getFileExtension());
+		PresignedUrlResponse response = s3Service.generatePresignedUrl(request);
+		return ResponseEntity.ok(ApiResponse.success(response));
 	}
 }

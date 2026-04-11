@@ -29,3 +29,8 @@ naver:
 
 vertex:
   api-key: "test-vertex-api-key"
+
+spring.cloud.aws.credentials.access-key: "mock-access-key"
+spring.cloud.aws.credentials.secret-key: "mock-secret-key"
+spring.cloud.aws.region.static: "ap-northeast-2"
+spring.cloud.aws.s3.bucket: "mock-bucket"
