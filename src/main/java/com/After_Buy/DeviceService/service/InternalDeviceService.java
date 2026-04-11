@@ -73,14 +73,12 @@ public class InternalDeviceService {
         public void deleteAllUserData(Long userId) {
                 log.info("[InternalDeviceService] 회원 탈퇴에 따른 사용자(userId={}) 데이터 전체 삭제 시작", userId);
                 try {
-                        // 1. 외래키를 갖고 있는 참조 데이터를 가장 안쪽부터 삭제(ocr_logs)
-                        ocrLogRepository.deleteAllByUserId(userId);
-                        // 2. 부모 객체를 가진 devices 삭제
+                        // 1. 부모 객체를 가진 devices 삭제 (OCR 로그는 통계 집계용으로 삭제하지 않고 보존)
                         deviceRepository.deleteAllByUserId(userId);
-                        // 3. 최상위(단, 재귀 부모를 가질 수 있는) folders 삭제
+                        // 2. 최상위(단, 재귀 부모를 가질 수 있는) folders 삭제
                         folderRepository.deleteAllByUserId(userId);
 
-                        log.info("[InternalDeviceService] 삭제 성공 - 사용자(userId={})의 모든 데이터 영구 정리 완료", userId);
+                        log.info("[InternalDeviceService] 삭제 성공 - 사용자(userId={})의 모든 데이터 영구 정리 완료 (OCR 로그 제외)", userId);
                 } catch (Exception e) {
                         log.error("[InternalDeviceService] 삭제 중 심각한 오류 발생 - 사용자(userId={})의 기기 데이터 제거 실패", userId, e);
                 }
