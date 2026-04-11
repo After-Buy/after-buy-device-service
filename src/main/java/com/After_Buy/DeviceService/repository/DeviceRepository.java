@@ -69,4 +69,14 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
            "AND (LOWER(d.productName) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
            "OR LOWER(d.brand) LIKE LOWER(CONCAT('%', :keyword, '%')))")
     List<Device> searchByUserIdAndKeyword(@Param("userId") Long userId, @Param("keyword") String keyword);
+
+    /**
+     * D-Day 알림을 위한 보증 만료 일자 일치 기기 목록 조회 (Internal API용)
+     * Spring Boot 애플리케이션에서 계산된 정확한 타겟 날짜로 조회합니다. (DB Timezone 이슈 방지)
+     *
+     * @param targetDate : 조회할 기준 만료일 (오늘 날짜 + days)
+     * @return : 해당 일자에 보증이 만료되는 기기 목록
+     */
+    @Query(value = "SELECT * FROM devices WHERE warranty_expiry_date = :targetDate", nativeQuery = true)
+    List<Device> findByWarrantyExpiryDateDday(@Param("targetDate") LocalDate targetDate);
 }
