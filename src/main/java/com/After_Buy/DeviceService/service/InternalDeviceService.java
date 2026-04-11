@@ -4,6 +4,8 @@ import com.After_Buy.DeviceService.dto.response.ExpiringDeviceDto;
 import com.After_Buy.DeviceService.dto.response.InternalWarrantyExpiringResponse;
 import com.After_Buy.DeviceService.entity.Device;
 import com.After_Buy.DeviceService.repository.DeviceRepository;
+import com.After_Buy.DeviceService.repository.FolderRepository;
+import com.After_Buy.DeviceService.repository.OcrLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,6 +28,8 @@ import java.util.stream.Collectors;
 public class InternalDeviceService {
 
         private final DeviceRepository deviceRepository;
+        private final FolderRepository folderRepository;
+        private final OcrLogRepository ocrLogRepository;
 
         /**
          * 보증 만료 D-day 기기 목록 조회
@@ -58,5 +62,25 @@ public class InternalDeviceService {
                 return InternalWarrantyExpiringResponse.builder()
                                 .devices(dtos)
                                 .build();
+        }
+
+        /**
+         * 회원 탈퇴 시 해당 사용자의 모든 기기 정보(OCR, 기기, 폴더)를 연쇄 삭제
+         * 
+         * @param userId 회원 탈퇴를 요청한 사용자 ID
+         */
+        @Transactional
+        public void deleteAllUserData(Long userId) {
+                log.info("[InternalDeviceService] 회원 탈퇴에 따른 사용자(userId={}) 데이터 전체 삭제 시작", userId);
+                try {
+                        // 1. 부모 객체를 가진 devices 삭제 (OCR 로그는 통계 집계용으로 삭제하지 않고 보존)
+                        deviceRepository.deleteAllByUserId(userId);
+                        // 2. 최상위(단, 재귀 부모를 가질 수 있는) folders 삭제
+                        folderRepository.deleteAllByUserId(userId);
+
+                        log.info("[InternalDeviceService] 삭제 성공 - 사용자(userId={})의 모든 데이터 영구 정리 완료 (OCR 로그 제외)", userId);
+                } catch (Exception e) {
+                        log.error("[InternalDeviceService] 삭제 중 심각한 오류 발생 - 사용자(userId={})의 기기 데이터 제거 실패", userId, e);
+                }
         }
 }

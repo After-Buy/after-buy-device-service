@@ -4,6 +4,7 @@ import com.After_Buy.DeviceService.entity.Device;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.Modifying;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -52,9 +53,9 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
     Long countByFolderId(Long folderId);
 
     // 특정 폴더 내부에 포함된 모든 기기를 일괄 삭제 (애플리케이션 레벨 CASCADE 용)
-    @org.springframework.data.jpa.repository.Modifying
-    @org.springframework.data.jpa.repository.Query("DELETE FROM Device d WHERE d.folderId = :folderId")
-    void deleteByFolderId(@org.springframework.data.repository.query.Param("folderId") Long folderId);
+    @Modifying
+    @Query("DELETE FROM Device d WHERE d.folderId = :folderId")
+    void deleteByFolderId(@Param("folderId") Long folderId);
 
     /**
      * 상품명 또는 브랜드 키워드 부분 검색 (통합 검색용)
@@ -79,4 +80,11 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
      */
     @Query(value = "SELECT * FROM devices WHERE warranty_expiry_date = :targetDate", nativeQuery = true)
     List<Device> findByWarrantyExpiryDateDday(@Param("targetDate") LocalDate targetDate);
+
+    /**
+     * 특정 사용자 기기 전부 일괄 삭제 (벌크 연산)
+     */
+    @Modifying
+    @Query("DELETE FROM Device d WHERE d.userId = :userId")
+    void deleteAllByUserId(@Param("userId") Long userId);
 }

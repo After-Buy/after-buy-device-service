@@ -5,6 +5,7 @@ import com.After_Buy.DeviceService.entity.Folder;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.Modifying;
 
 import java.util.Optional;
 import java.util.List;
@@ -86,5 +87,11 @@ public interface FolderRepository extends JpaRepository<Folder, Long> {
 	 * @return : 매칭된 폴더 목록
 	 */
 	List<Folder> findByUserIdAndFolderNameContainingIgnoreCase(Long userId, String keyword);
-}
 
+	/**
+	 * 특정 사용자 폴더 전부 일괄 삭제 (벌크 연산)
+	 */
+	@Modifying
+	@Query("DELETE FROM Folder f WHERE f.userId = :userId")
+	void deleteAllByUserId(@Param("userId") Long userId);
+}
