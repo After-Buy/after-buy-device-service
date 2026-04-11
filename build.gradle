@@ -46,7 +46,7 @@ dependencies {
 	// 기기 이미지 및 영수증 클라우드 업로드 전용 (S3)
 	implementation 'io.awspring.cloud:spring-cloud-aws-starter-s3'
 	// Textract 비동기 OCR 처리 원격 함수 호출 전용 (Lambda)
-	// implementation 'software.amazon.awssdk:lambda'
+	implementation 'software.amazon.awssdk:lambda'
 
 	// 앱에서 넘어온 JWT 토큰 페이로드 자체 해석 및 위조 검증용 (JJWT)
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.5'

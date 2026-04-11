@@ -56,6 +56,9 @@ public enum ErrorCode {
 	/** OCR 텍스트 인식 실패 */
 	OCR_RECOGNITION_FAILED(HttpStatus.UNPROCESSABLE_ENTITY, "OCR-001", "이미지에서 텍스트를 인식하지 못했습니다."),
 
+	/** OCR 로그를 찾을 수 없는 경우 (404 Not Found) */
+	OCR_LOG_NOT_FOUND(HttpStatus.NOT_FOUND, "OCR-002", "해당 OCR 로그를 찾을 수 없습니다."),
+
 	/* ===== 공통 (COMMON-0XX) ===== */
 
 	/** @Valid 유효성 검사 실패 */
