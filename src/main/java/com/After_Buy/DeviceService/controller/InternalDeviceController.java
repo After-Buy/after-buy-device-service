@@ -1,5 +1,8 @@
 package com.After_Buy.DeviceService.controller;
 
+import java.time.LocalDate;
+
+import com.After_Buy.DeviceService.dto.response.OcrStatsResponse;
 import com.After_Buy.DeviceService.dto.response.InternalWarrantyExpiringResponse;
 import com.After_Buy.DeviceService.dto.response.InternalDeleteUserDataResponse;
 import com.After_Buy.DeviceService.service.InternalDeviceService;
@@ -83,5 +86,26 @@ public class InternalDeviceController {
                         .user_id(userId)
                         .build()
         );
+    }
+
+    /**
+     * 기간별 OCR 통계 정보 조회 API
+     * Admin Service의 대시보드 표시에 필요한 통계 집계를 위함.
+     * 결과가 즉시 필요한 화면용 데이터이므로 동기(Synchronous) 처리합니다.
+     *
+     * @param startDate 집계 시작일
+     * @param endDate 집계 종료일
+     * @return 집계된 통계 객체 (OcrStatsResponse)
+     */
+    @Operation(summary = "[Internal] OCR 통계 조회",
+               description = "Admin Service 대시보드용으로 기간별 OCR 시도, 실패, 수정 및 실패 트렌드 통계를 반환합니다.")
+    @Parameter(name = "X-Internal-Secret", description = "내부 보안 키", required = true, in = ParameterIn.HEADER, schema = @Schema(type = "string"))
+    @GetMapping("/ocr-stats")
+    public ResponseEntity<OcrStatsResponse> getOcrStats(
+            @RequestParam("start_date") LocalDate startDate,
+            @RequestParam("end_date") LocalDate endDate) {
+
+        log.info("Internal API 호출 - OCR 통계 조회 ({} ~ {})", startDate, endDate);
+        return ResponseEntity.ok(internalDeviceService.getOcrStats(startDate, endDate));
     }
 }

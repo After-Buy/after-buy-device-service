@@ -22,4 +22,30 @@ public interface OcrLogRepository extends JpaRepository<OcrLog, Long> {
     @Modifying
     @Query("DELETE FROM OcrLog o WHERE o.userId = :userId")
     void deleteAllByUserId(@Param("userId") Long userId);
+
+    /**
+     * 특정 기간 동안의 전체 OCR 시도 횟수
+     */
+    long countByCreatedAtBetween(java.time.LocalDateTime start, java.time.LocalDateTime end);
+
+    /**
+     * 특정 기간 동안의 OCR 실패 횟수
+     */
+    long countByIsSuccessFalseAndCreatedAtBetween(java.time.LocalDateTime start, java.time.LocalDateTime end);
+
+    /**
+     * 특정 기간 내 지정된 필드가 배열로 저장되어 있는(유저가 수정한) 레코드들의 modifiedFields 문자열 리스트 반환
+     */
+    @Query("SELECT o.modifiedFields FROM OcrLog o WHERE o.modifiedFields IS NOT NULL AND o.createdAt >= :start AND o.createdAt <= :end")
+    java.util.List<String> findModifiedFieldsByCreatedAtBetween(@Param("start") java.time.LocalDateTime start, @Param("end") java.time.LocalDateTime end);
+
+    /**
+     * 특정 기간 내의 일별 실패 트렌드 집계
+     */
+    @Query(value = "SELECT DATE(o.created_at) as date, COUNT(*) as failureCount " +
+                   "FROM ocr_logs o " +
+                   "WHERE o.is_success = false AND o.created_at >= :start AND o.created_at <= :end " +
+                   "GROUP BY DATE(o.created_at) " +
+                   "ORDER BY date", nativeQuery = true)
+    java.util.List<Object[]> findDailyFailureTrendRaw(@Param("start") java.time.LocalDateTime start, @Param("end") java.time.LocalDateTime end);
 }
