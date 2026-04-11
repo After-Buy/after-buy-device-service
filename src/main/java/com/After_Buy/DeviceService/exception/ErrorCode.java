@@ -43,6 +43,9 @@ public enum ErrorCode {
 	/** 타인 소유 물품 권한 없음 (403 Forbidden) */
 	BULK_ACTION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "DEVICE-007", "본인 소유의 항목만 접근할 수 있습니다."),
 
+	/** 지원하지 않는 이미지 확장자 형식 (400 Bad Request) */
+	DEVICE_INVALID_IMAGE_EXTENSION(HttpStatus.BAD_REQUEST, "DEVICE-008", "지원하지 않는 이미지 확장자입니다. (jpg, jpeg, png, webp 가능)"),
+
 	/* ===== 검색 대행 관련 (SEARCH-0XX) ===== */
 
 	/** 네이버 쇼핑 API 검색 결과 없음 */
