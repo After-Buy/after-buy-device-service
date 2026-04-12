@@ -14,26 +14,28 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import software.amazon.awssdk.core.SdkBytes;
-import software.amazon.awssdk.services.lambda.LambdaClient;
-import software.amazon.awssdk.services.lambda.model.InvokeRequest;
-import software.amazon.awssdk.services.lambda.model.InvokeResponse;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+
+import jakarta.annotation.PostConstruct;
 
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * OCR 처리 서비스
- * AWS Lambda(Textract)를 동기 방식으로 호출하여 OCR 결과를 반환하고
+ * Lambda Function URL을 통해 AWS Lambda(Textract)를 HTTP 호출하여 OCR 결과를 반환하고
  * ocr_logs 테이블에 처리 이력을 자동 기록합니다.
  *
- * 처리 흐름: 앱 → Device Service → AWS Lambda → Amazon Textract → Lambda 파싱 → Device Service → 앱
+ * 처리 흐름: 앱 → Device Service → Lambda Function URL → Amazon Textract → Lambda 파싱 → Device Service → 앱
  *
  * @since : 2026.04.12
- * @version : 1.0.0
+ * @version : 2.0.0
  * @author : 최준혁
  */
 @Slf4j
@@ -41,16 +43,26 @@ import java.util.List;
 @RequiredArgsConstructor
 public class OcrService {
 
-    private final LambdaClient lambdaClient;
     private final OcrLogRepository ocrLogRepository;
     private final ObjectMapper objectMapper;
+    private final WebClient.Builder webClientBuilder;
 
-    @Value("${aws.lambda.function-name}")
-    private String lambdaFunctionName;
+    @Value("${aws.lambda.function-url}")
+    private String lambdaFunctionUrl;
+
+    @Value("${internal.secret-key}")
+    private String internalSecretKey;
+
+    private WebClient lambdaWebClient;
+
+    @PostConstruct
+    void init() {
+        this.lambdaWebClient = webClientBuilder.build();
+    }
 
     /**
      * OCR 텍스트 추출 메인 메서드
-     * Lambda를 동기 호출하고 결과를 파싱하여 반환하며 ocr_logs에 이력을 기록합니다.
+     * Lambda Function URL에 HTTP POST로 요청하여 OCR 결과를 반환하며 ocr_logs에 이력을 기록합니다.
      *
      * @param userId  : 요청 사용자 ID (JWT에서 추출)
      * @param request : OCR 요청 (유형 + Base64 이미지)
@@ -61,17 +73,15 @@ public class OcrService {
         log.info("[OcrService] OCR 처리 요청 - userId={}, ocrType={}", userId, request.getOcrType());
 
         // Lambda 요청 페이로드 구성
-        String payload = buildLambdaPayload(request);
+        Map<String, String> payload = new HashMap<>();
+        payload.put("ocr_type", request.getOcrType().name());
+        payload.put("image_base64", request.getImageBase64());
 
-        // Lambda 동기 호출
-        InvokeResponse lambdaResponse = invokeLambda(payload);
-
-        // Lambda 응답 파싱
-        String responseJson = lambdaResponse.payload().asUtf8String();
-        log.info("[OcrService] Lambda 응답 수신 - statusCode={}", lambdaResponse.statusCode());
+        // Lambda Function URL HTTP 호출
+        String responseBody = invokeLambda(payload);
 
         // 결과 파싱 및 응답 DTO 구성
-        OcrResponse ocrResponse = parseOcrResponse(request.getOcrType(), responseJson);
+        OcrResponse ocrResponse = parseOcrResponse(request.getOcrType(), responseBody);
 
         // OCR 이력을 DB에 기록 (성공/실패 모두 기록)
         OcrLog ocrLog = OcrLog.builder()
@@ -121,55 +131,59 @@ public class OcrService {
     /* ===== Private 내부 메서드 ===== */
 
     /**
-     * Lambda 호출용 페이로드 JSON 문자열을 생성합니다.
+     * Lambda Function URL에 HTTP POST 요청을 전송합니다.
+     * x-internal-secret-key 헤더로 서비스 간 인증을 수행합니다.
      *
-     * @param request : OCR 요청 DTO
-     * @return 직렬화된 JSON 페이로드 문자열
+     * @param payload : Lambda에 전달할 요청 body (ocr_type, image_base64)
+     * @return Lambda 응답 body JSON 문자열 (Function URL 래핑 해제 후)
      */
-    private String buildLambdaPayload(OcrRequest request) {
+    private String invokeLambda(Map<String, String> payload) {
         try {
-            return objectMapper.writeValueAsString(
-                    new java.util.HashMap<String, String>() {{
-                        put("ocr_type", request.getOcrType().name());
-                        put("image_base64", request.getImageBase64());
-                    }}
-            );
-        } catch (Exception e) {
-            log.error("[OcrService] Lambda 페이로드 생성 실패", e);
+            return lambdaWebClient.post()
+                    .uri(lambdaFunctionUrl)
+                    .header("x-internal-secret-key", internalSecretKey)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(payload)
+                    .retrieve()
+                    .onStatus(
+                            status -> status.is4xxClientError() || status.is5xxServerError(),
+                            clientResponse -> clientResponse.bodyToMono(String.class)
+                                    .doOnNext(errorBody -> log.error(
+                                            "[OcrService] Lambda 호출 오류 (HTTP {}): {}",
+                                            clientResponse.statusCode().value(), errorBody))
+                                    .flatMap(errorBody -> reactor.core.publisher.Mono.error(
+                                            new RuntimeException("Lambda HTTP 오류 " + clientResponse.statusCode().value()
+                                                    + ": " + errorBody)))
+                    )
+                    .bodyToMono(String.class)
+                    .block();
+        } catch (WebClientResponseException e) {
+            log.error("[OcrService] Lambda 호출 HTTP 오류 - status={}", e.getStatusCode(), e);
             throw new CustomException(ErrorCode.OCR_RECOGNITION_FAILED);
-        }
-    }
-
-    /**
-     * AWS Lambda를 동기 방식으로 호출합니다.
-     *
-     * @param payload : Lambda에 전달할 JSON 페이로드
-     * @return InvokeResponse : Lambda 응답 객체
-     */
-    private InvokeResponse invokeLambda(String payload) {
-        try {
-            InvokeRequest invokeRequest = InvokeRequest.builder()
-                    .functionName(lambdaFunctionName)
-                    .payload(SdkBytes.fromString(payload, StandardCharsets.UTF_8))
-                    .build();
-            return lambdaClient.invoke(invokeRequest);
         } catch (Exception e) {
-            log.error("[OcrService] Lambda 호출 실패 - functionName={}", lambdaFunctionName, e);
+            log.error("[OcrService] Lambda 호출 실패", e);
             throw new CustomException(ErrorCode.OCR_RECOGNITION_FAILED);
         }
     }
 
     /**
      * Lambda 응답 JSON을 OCR 유형에 맞게 파싱하여 OcrResponse를 반환합니다.
-     * 인식 실패 시 is_success: false와 안내 메시지를 포함합니다.
+     * Lambda Function URL 응답: {"statusCode": 200, "body": "{...}", "headers": {...}}
+     * → body 필드를 추출하여 내부 JSON을 파싱합니다.
      *
      * @param ocrType      : OCR 유형
-     * @param responseJson : Lambda가 반환한 JSON 문자열
+     * @param responseJson : Lambda Function URL이 반환한 JSON 문자열
      * @return OcrResponse : 파싱된 응답 DTO
      */
     private OcrResponse parseOcrResponse(OcrType ocrType, String responseJson) {
         try {
             JsonNode root = objectMapper.readTree(responseJson);
+
+            // Function URL 응답 래핑 해제: body 필드에서 실제 JSON 추출
+            JsonNode bodyNode = root.path("body");
+            if (!bodyNode.isMissingNode() && bodyNode.isTextual()) {
+                root = objectMapper.readTree(bodyNode.asText());
+            }
 
             // Lambda에서 is_success 필드로 성공 여부를 내려준다고 가정
             boolean isSuccess = root.path("is_success").asBoolean(false);
