@@ -64,4 +64,4 @@ aws:
 
 # 타 마이크로서비스 호출 URL (WebClient)
 services:
-  admin-url: ${SERVICES_ADMIN_URL:http://localhost:8084}
+  admin-url: ${SERVICES_ADMIN_URL}
