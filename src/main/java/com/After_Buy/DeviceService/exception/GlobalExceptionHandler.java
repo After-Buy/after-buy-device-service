@@ -1,6 +1,8 @@
 package com.After_Buy.DeviceService.exception;
 
+import com.After_Buy.DeviceService.client.AdminInternalClient;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
@@ -18,12 +20,17 @@ import java.util.stream.Collectors;
  * AdminService의 GlobalExceptionHandler와 동일한 패턴을 사용합니다.
  *
  * @since : 2026.04.06
- * @version : 1.0.0
+ * @version : 1.0.1
  * @author : 최준혁
+ * @author : 신태훈 (2026.04.26 — handleException AdminInternalClient 연동 추가)
  */
 @Slf4j
 @RestControllerAdvice
+@RequiredArgsConstructor
 public class GlobalExceptionHandler {
+
+	private final AdminInternalClient adminInternalClient;
+
 
 	/**
 	 * 커스텀 도메인 특화 비즈니스 예외 핸들링
@@ -85,14 +92,20 @@ public class GlobalExceptionHandler {
 	/**
 	 * 알 수 없는 서버 내부 예외 핸들링 (최종 디펜스 라인)
 	 * 예상치 못한 500급 예외를 처리합니다. 내부 구조 노출을 막고 500 응답으로 변환합니다.
+	 * Admin Service로 비동기 에러 로그를 전송합니다. (Fire & Forget)
 	 *
 	 * @param e       컨트롤러 통제 밖까지 도달한 예외
 	 * @param request 현재 HTTP 요청 (path 추출용)
 	 * @return 500 INTERNAL SERVER ERROR 응답
+	 * @since : 2026.04.26
+	 * @author : 신태훈
 	 */
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ErrorResponse> handleException(Exception e, HttpServletRequest request) {
 		log.error("[UnhandledException] path={}, message={}", request.getRequestURI(), e.getMessage(), e);
+
+		/* Admin Service로 에러 로그 비동기 전송 (Fire & Forget, 4xx 제외 500급만) */
+		adminInternalClient.sendErrorLogAsync(request.getRequestURI(), e);
 
 		ErrorResponse errorResponse = ErrorResponse.of(
 				ErrorCode.INTERNAL_SERVER_ERROR.getHttpStatus().value(),
