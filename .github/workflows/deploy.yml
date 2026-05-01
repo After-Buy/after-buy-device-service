@@ -78,8 +78,9 @@ jobs:
             AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET }}
             NAVER_CLIENT_ID=${{ secrets.NAVER_CLIENT_ID }}
             NAVER_CLIENT_SECRET=${{ secrets.NAVER_CLIENT_SECRET }}
-            FIREBASE_CONFIG_PATH=classpath:firebase-service-account.json
+            FIREBASE_CONFIG_PATH=file:/app/firebase-service-account.json
             ADMIN_FRONTEND_URL=${{ secrets.DEV_ADMIN_FRONTEND_URL }}
+            CORS_ALLOWED_ORIGINS=${{ secrets.DEV_ADMIN_FRONTEND_URL }}
             AWS_LAMBDA_FUNCTION_URL=${{ secrets.AWS_LAMBDA_FUNCTION_URL }}
             VERTEX_API_KEY=${{ secrets.VERTEX_API_KEY }}
             ENVEOF
@@ -124,8 +125,9 @@ jobs:
             AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET }}
             NAVER_CLIENT_ID=${{ secrets.NAVER_CLIENT_ID }}
             NAVER_CLIENT_SECRET=${{ secrets.NAVER_CLIENT_SECRET }}
-            FIREBASE_CONFIG_PATH=classpath:firebase-service-account.json
+            FIREBASE_CONFIG_PATH=file:/app/firebase-service-account.json
             ADMIN_FRONTEND_URL=${{ secrets.PROD_ADMIN_FRONTEND_URL }}
+            CORS_ALLOWED_ORIGINS=${{ secrets.PROD_ADMIN_FRONTEND_URL }}
             AWS_LAMBDA_FUNCTION_URL=${{ secrets.AWS_LAMBDA_FUNCTION_URL }}
             VERTEX_API_KEY=${{ secrets.VERTEX_API_KEY }}
             ENVEOF
