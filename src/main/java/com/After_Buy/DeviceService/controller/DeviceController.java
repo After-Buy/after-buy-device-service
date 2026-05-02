@@ -80,7 +80,7 @@ public class DeviceController {
 	 *                                                               (404)
 	 */
 	@Operation(summary = "기기 등록", description = "새 기기를 등록합니다. warranty_expiry_date는 서버에서 자동 계산됩니다.")
-	@PostMapping
+	@PostMapping("/register")
 	public ResponseEntity<ApiResponse<DeviceResponse>> registerDevice(
 			@AuthenticationPrincipal UserPrincipal userPrincipal,
 			@Valid @RequestBody DeviceRegisterRequest request) {
@@ -121,7 +121,7 @@ public class DeviceController {
 	 * @author : 최준혁
 	 */
 	@Operation(summary = "미분류 기기 목록 조회", description = "폴더에 속하지 않은 미분류 기기 목록을 정렬 조건에 따라 조회합니다.")
-	@GetMapping
+	@GetMapping("/home")
 	public ResponseEntity<ApiResponse<DeviceListResponse>> getDeviceList(
 			@AuthenticationPrincipal UserPrincipal userPrincipal,
 			@RequestParam(value = "sort", defaultValue = "created_desc") String sort) {
