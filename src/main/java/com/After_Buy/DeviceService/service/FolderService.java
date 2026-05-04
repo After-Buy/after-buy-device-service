@@ -369,6 +369,7 @@ public class FolderService {
                             d.getDeviceId(),
                             d.getProductName(),
                             d.getBrand(),
+                            d.getImageUrl(),
                             d.getWarrantyExpiryDate(),
                             d.getFolderId(),
                             folderName

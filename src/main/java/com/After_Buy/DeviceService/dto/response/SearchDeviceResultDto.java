@@ -14,7 +14,7 @@ import java.time.LocalDate;
  * 미분류 기기(folder_id = null)인 경우 folderName도 null로 반환합니다.
  *
  * @since : 2026.04.10
- * @version : 1.0.0
+ * @version : 1.1.0
  * @author : 최준혁
  */
 @Getter
@@ -31,6 +31,9 @@ public class SearchDeviceResultDto {
 
     /** 브랜드명 */
     private String brand;
+
+    /** 기기 이미지 S3 URL (null 허용) */
+    private String imageUrl;
 
     /** 보증 만료일 */
     private LocalDate warrantyExpiryDate;
