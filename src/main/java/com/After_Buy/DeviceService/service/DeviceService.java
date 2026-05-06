@@ -149,14 +149,15 @@ public class DeviceService {
 	 * @return HomeDeviceDto 객체
 	 */
 	private HomeDeviceDto mapToHomeDeviceDto(Device device, boolean isRecent) {
-		long remainingDays = ChronoUnit.DAYS.between(LocalDate.now(), device.getWarrantyExpiryDate());
+		LocalDate expiryDate = device.getWarrantyExpiryDate();
+		Long remainingDays = (expiryDate != null) ? ChronoUnit.DAYS.between(LocalDate.now(), expiryDate) : null;
 
 		HomeDeviceDto.HomeDeviceDtoBuilder builder = HomeDeviceDto.builder()
 				.device_id(device.getDeviceId())
 				.product_name(device.getProductName())
 				.brand(device.getBrand())
 				.image_url(device.getImageUrl())
-				.warranty_expiry_date(device.getWarrantyExpiryDate())
+				.warranty_expiry_date(expiryDate)
 				.days_remaining(remainingDays);
 
 		if (isRecent) {
