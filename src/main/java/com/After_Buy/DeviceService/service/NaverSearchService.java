@@ -77,12 +77,6 @@ public class NaverSearchService {
         // 네이버 API 응답의 title 등에 포함된 <b>, </b> 태그 등을 이스케이프 해제 및 정제
         String cleanTitle = cleanHtmlTags(item.getTitle());
 
-        // Gemini를 통한 유연한 모델명 매핑 검증
-        // 단순 contains 대신 가전 도메인 지식을 보유한 Gemini가 판단 (접미사 WK, AK 등 무시)
-        if (!geminiParsingService.matchModelName(modelName, cleanTitle)) {
-            log.warn("[NaverSearchService] Gemini 모델명 매핑 불일치. 검색 거부. (네이버 결과: {}, 요청 모델명: {})", cleanTitle, modelName);
-            throw new CustomException(ErrorCode.SEARCH_NO_RESULT);
-        }
 
         // 브랜드 원본 추출 (brand 없으면 maker 사용)
         String rawBrand = item.getBrand() != null && !item.getBrand().isEmpty()
