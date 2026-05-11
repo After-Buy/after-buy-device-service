@@ -58,7 +58,7 @@ public class NaverSearchService {
                 .uri(uriBuilder -> uriBuilder
                         .path("/shop.json")
                         .queryParam("query", modelName)
-                        .queryParam("display", 1)  // 가장 유사도 높은 최상단 데이터 1개만 매핑
+                        .queryParam("display", 1) // 가장 유사도 높은 최상단 데이터 1개만 매핑
                         .queryParam("sort", "sim") // 유사도(정확도) 순 정렬 명시
                         .build())
                 .header("X-Naver-Client-Id", clientId)
@@ -77,9 +77,10 @@ public class NaverSearchService {
         // 네이버 API 응답의 title 등에 포함된 <b>, </b> 태그 등을 이스케이프 해제 및 정제
         String cleanTitle = cleanHtmlTags(item.getTitle());
 
-        // 검색된 제품의 이름(cleanTitle)에 사용자가 입력한 모델명이 포함되어 있는지 엄격하게 검증 (띄어쓰기, 하이픈 무시)
-        if (!normalizeString(cleanTitle).contains(normalizeString(modelName))) {
-            log.warn("[NaverSearchService] 검색 결과가 요청한 모델명과 일치하지 않습니다. 매핑 거부. (조회된 상품: {}, 요청 모델명: {})", cleanTitle, modelName);
+        // Gemini를 통한 유연한 모델명 매핑 검증
+        // 단순 contains 대신 가전 도메인 지식을 보유한 Gemini가 판단 (접미사 WK, AK 등 무시)
+        if (!geminiParsingService.matchModelName(modelName, cleanTitle)) {
+            log.warn("[NaverSearchService] Gemini 모델명 매핑 불일치. 검색 거부. (네이버 결과: {}, 요청 모델명: {})", cleanTitle, modelName);
             throw new CustomException(ErrorCode.SEARCH_NO_RESULT);
         }
 
@@ -125,7 +126,8 @@ public class NaverSearchService {
      * @author : 최준혁
      */
     private String normalizeString(String input) {
-        if (input == null) return "";
+        if (input == null)
+            return "";
         return input.replaceAll("[\\s\\-_]", "").toUpperCase();
     }
 
@@ -140,7 +142,8 @@ public class NaverSearchService {
      * @author : 최준혁
      */
     private String cleanHtmlTags(String input) {
-        if (input == null) return null;
+        if (input == null)
+            return null;
         String unescaped = HtmlUtils.htmlUnescape(input);
         return unescaped.replaceAll("<[^>]*>", "");
     }
