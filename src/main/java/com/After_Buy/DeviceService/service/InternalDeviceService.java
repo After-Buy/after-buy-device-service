@@ -25,7 +25,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import com.After_Buy.DeviceService.dto.response.OcrStatsResponse;
 import com.After_Buy.DeviceService.dto.response.FieldModifiedStatDto;
+import com.After_Buy.DeviceService.dto.response.FieldFailureStatDto;
 import com.After_Buy.DeviceService.dto.response.DailyFailureTrendDto;
+import com.After_Buy.DeviceService.dto.response.DailyOcrResultTrendDto;
 
 /**
  * 인프라 및 서비스 간 내부 통신용 서비스
@@ -158,12 +160,44 @@ public class InternalDeviceService {
                                         .build();
                 }).collect(Collectors.toList());
 
+                // 4. daily_result_trend 도출: 프론트에서 날짜별 성공률을 계산할 수 있도록 날짜별 전체/성공/오인식/실패를 함께 반환
+                List<Object[]> rawResultTrend = ocrLogRepository.findDailyOcrResultTrendRaw(startDateTime, endDateTime);
+                List<DailyOcrResultTrendDto> dailyResultTrend = rawResultTrend.stream().map(row -> {
+                        String dateStr = row[0].toString();
+                        Long totalCnt = ((Number) row[1]).longValue();
+                        Long successCnt = ((Number) row[2]).longValue();
+                        Long modifiedCnt = ((Number) row[3]).longValue();
+                        Long failureCnt = ((Number) row[4]).longValue();
+
+                        return DailyOcrResultTrendDto.builder()
+                                        .date(dateStr)
+                                        .totalAttempts(totalCnt)
+                                        .successCount(successCnt)
+                                        .modifiedCount(modifiedCnt)
+                                        .failureCount(failureCnt)
+                                        .build();
+                }).collect(Collectors.toList());
+
+                // 5. field_failure_stats 도출: 현재 스키마상 실패 항목은 OCR 유형(MODEL/SERIAL/RECEIPT) 기준으로 집계
+                List<Object[]> rawFieldFailures = ocrLogRepository.findFieldFailureStatsRaw(startDateTime, endDateTime);
+                List<FieldFailureStatDto> fieldFailureStats = rawFieldFailures.stream().map(row -> {
+                        String fieldName = row[0].toString();
+                        Long failCnt = ((Number) row[1]).longValue();
+
+                        return FieldFailureStatDto.builder()
+                                        .fieldName(fieldName)
+                                        .failureCount(failCnt)
+                                        .build();
+                }).collect(Collectors.toList());
+
                 return OcrStatsResponse.builder()
                                 .totalAttempts(totalAttempts)
                                 .failureCount(failureCount)
                                 .modifiedCount(modifiedCount)
                                 .fieldModifiedStats(fieldStats)
+                                .fieldFailureStats(fieldFailureStats)
                                 .dailyFailureTrend(dailyTrend)
+                                .dailyResultTrend(dailyResultTrend)
                                 .build();
         }
 }

@@ -29,6 +29,12 @@ public class OcrStatsResponse {
     @JsonProperty("field_modified_stats")
     private List<FieldModifiedStatDto> fieldModifiedStats;
 
+    @JsonProperty("field_failure_stats")
+    private List<FieldFailureStatDto> fieldFailureStats;
+
     @JsonProperty("daily_failure_trend")
     private List<DailyFailureTrendDto> dailyFailureTrend;
+
+    @JsonProperty("daily_result_trend")
+    private List<DailyOcrResultTrendDto> dailyResultTrend;
 }
